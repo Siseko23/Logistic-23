@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Reports</p>
+      <h1>Report notifications</h1>
+      <p class="topbar-copy">Notifications sent by FreightFlow admin about cargo reports involving your fleet. Respond to each within 24 hours.</p>
+    </div>
+    {% if unread > 0 %}
+    <div style="align-self:flex-start;margin-top:.5rem">
+      <span style="padding:.5rem 1.1rem;border-radius:999px;background:rgba(155,28,28,.12);color:#9b1c1c;font-size:.85rem;font-weight:600">
+        🔴 {{ unread }} unread
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterN('all',this)">All ({{ notifications|length }})</button>
+    <button class="nav-chip" onclick="filterN('Unread',this)">Unread</button>
+    <button class="nav-chip" onclick="filterN('Read',this)">Read</button>
+    <button class="nav-chip" onclick="filterN('Responded',this)">Responded</button>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="notif-list">
+      {% for n in notifications | sort(attribute='sentAt', reverse=True) %}
+      <a href="{{ '#' }}"
+         class="table-row notif-item"
+         data-status="{{ n.status }}"
+         style="text-decoration:none;color:inherit;flex-wrap:wrap;gap:.8rem;
+           {% if n.status == 'Unread' %}background:rgba(47,108,87,.06);border-left:3px solid var(--accent){% endif %}">
+
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;border-radius:50%;
+          background:{% if n.status=='Unread' %}rgba(47,108,87,.15){% elif n.status=='Responded' %}rgba(47,108,87,.1){% else %}rgba(0,0,0,.06){% endif %}">
+          {% if n.status == 'Unread' %}🔔
+          {% elif n.status == 'Responded' %}✅
+          {% else %}📋{% endif %}
+        </div>
+
+        <div style="flex:1;min-width:180px">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <strong style="font-size:.92rem">{{ n.category }}</strong>
+            {% if n.status == 'Unread' %}
+            <span style="font-size:.7rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.15rem .5rem;border-radius:999px;font-weight:700">NEW</span>
+            {% endif %}
+          </div>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Booking {{ n.bookingRef }} &middot; {{ n.id }}</p>
+          <p style="font-size:.84rem;margin:.3rem 0 0;color:var(--text);line-height:1.45">
+            {{ n.message[:100] }}{% if n.message|length > 100 %}…{% endif %}
+          </p>
+        </div>
+
+        <div style="text-align:right;min-width:120px;flex-shrink:0">
+          <p class="muted" style="font-size:.78rem">{{ n.sentAt }}</p>
+          <p style="font-size:.78rem;margin:.2rem 0 0;color:var(--muted)">By {{ n.sentBy }}</p>
+          <span class="pill {% if n.status=='Responded' %}badge{% endif %}" style="margin-top:.4rem;display:inline-block;
+            {% if n.status=='Unread' %}background:rgba(155,28,28,.12);color:#9b1c1c{% endif %}">
+            {{ n.status }}
+          </span>
+        </div>
+      </a>
+      {% else %}
+      <div class="empty-card" style="padding:2.5rem;text-align:center">
+        <p style="font-size:2rem;margin:0">📭</p>
+        <p class="muted" style="margin:.6rem 0 0">No report notifications yet. FreightFlow admin will notify you here if a cargo report involves your fleet.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.15)">
+    <div class="panel-head"><h2>How this works</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;padding-top:.4rem">
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.4rem;flex-shrink:0">1️⃣</span>
+        <div><strong style="font-size:.88rem">Shipper raises a report</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">A shipper reports a cargo issue (damage, shortage, delay) to FreightFlow support.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.4rem;flex-shrink:0">2️⃣</span>
+        <div><strong style="font-size:.88rem">Admin investigates</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">The FreightFlow support team reviews the case and determines if your fleet is involved.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.4rem;flex-shrink:0">3️⃣</span>
+        <div><strong style="font-size:.88rem">You get notified</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">A notification appears here and you may be asked to provide documentation or a response.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.4rem;flex-shrink:0">4️⃣</span>
+        <div><strong style="font-size:.88rem">Respond within 24h</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Submit your response and any supporting documentation. Late responses may affect your performance score.</p></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterN(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.notif-item').forEach(n => {
+    n.style.display = (val === 'all' || n.dataset.status === val) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

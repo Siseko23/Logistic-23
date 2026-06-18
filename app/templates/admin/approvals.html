@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.app-card{border:1px solid var(--line);border-radius:18px;padding:1.2rem;margin-bottom:1rem;background:rgba(255,255,255,.55)}
+.app-card.approved{border-color:rgba(26,107,60,.3);background:rgba(26,107,60,.04)}
+.app-card.rejected{border-color:rgba(155,28,28,.2);background:rgba(155,28,28,.03)}
+.app-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem}
+.doc-line{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;padding:.65rem .8rem;border-radius:12px;margin-bottom:.4rem;border:1px solid transparent}
+.doc-line-pending{background:#dbeafe;border-color:rgba(21,95,160,.2)}
+.doc-line-verified{background:#dcfce7;border-color:rgba(26,107,60,.2)}
+.doc-line-reupload{background:#fee2e2;border-color:rgba(155,28,28,.2)}
+.doc-btns{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.status-badge{font-size:.72rem;font-weight:700;padding:.25rem .7rem;border-radius:999px}
+.app-actions{display:flex;gap:.6rem;margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--line);flex-wrap:wrap;align-items:center}
+</style>
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Compliance</p>
+      <h1>Supplier approvals</h1>
+      <p class="topbar-copy">Download and verify each document before approving a supplier. Approved suppliers are immediately active in the booking engine.</p>
+    </div>
+  </div>
+
+  {% for a in applications %}
+  {% if a.status == 'Approved' %}{% set css_class = 'approved' %}
+  {% elif a.status == 'Rejected' %}{% set css_class = 'rejected' %}
+  {% else %}{% set css_class = 'awaiting' %}{% endif %}
+
+  <div class="app-card {{ css_class }}" id="{{ a.id }}">
+    <div class="app-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem;flex-wrap:wrap">
+          <strong style="font-size:1.05rem">{{ a.supplier }}</strong>
+          {% if a.status == 'Approved' %}
+            <span class="status-badge" style="background:#dcfce7;color:#166534">✓ Approved</span>
+          {% elif a.status == 'Rejected' %}
+            <span class="status-badge" style="background:#fee2e2;color:#991b1b">✗ Rejected</span>
+          {% elif a.status == 'Follow-up required' %}
+            <span class="status-badge" style="background:#fef9c3;color:#854d0e">⚠ Follow-up required</span>
+          {% else %}
+            <span class="status-badge" style="background:#dbeafe;color:#1e40af">⏳ Awaiting review</span>
+          {% endif %}
+        </div>
+        <p style="margin:0;font-size:.85rem;color:var(--muted)">{{ a.region }}</p>
+        <p style="margin:.2rem 0 0;font-size:.78rem;color:var(--muted)">
+          Submitted {{ a.submittedAt }} · {{ a.contactEmail }} · {{ a.contactPhone }}
+        </p>
+      </div>
+      {% if a.status not in ('Approved','Rejected') %}
+      {% set verified_count = a.docs | selectattr('status','equalto','Verified') | list | length %}
+      {% set total_count = a.docs | length %}
+      <div style="text-align:right">
+        {% if verified_count == total_count and total_count > 0 %}
+          <p style="font-size:.82rem;color:#166534;font-weight:700;margin:0 0 .3rem">✓ All {{ total_count }} documents verified</p>
+          <p style="font-size:.76rem;color:var(--muted);margin:0">Ready to approve</p>
+        {% else %}
+          <p style="font-size:.82rem;color:#1e40af;margin:0 0 .3rem"><strong>{{ verified_count }} / {{ total_count }}</strong> documents verified</p>
+          <p style="font-size:.76rem;color:var(--muted);margin:0">Verify all documents before approving</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Document list -->
+    <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.5rem">Documents submitted</p>
+    {% for app_doc in a.docs %}
+      {% if app_doc.status == 'Verified' %}
+        {% set line_cls = 'doc-line-verified' %}
+        {% set status_lbl = '✓ Verified' %}
+        {% set status_col = '#166534' %}
+      {% elif app_doc.status == 'Awaiting re-upload' %}
+        {% set line_cls = 'doc-line-reupload' %}
+        {% set status_lbl = '⚠ Re-upload requested' %}
+        {% set status_col = '#991b1b' %}
+      {% else %}
+        {% set line_cls = 'doc-line-pending' %}
+        {% set status_lbl = '⏳ Pending review' %}
+        {% set status_col = '#1e40af' %}
+      {% endif %}
+
+      <div class="doc-line {{ line_cls }}">
+        <div>
+          <strong style="font-size:.88rem">{{ app_doc.name }}</strong>
+          <span style="font-size:.75rem;color:{{ status_col }};font-weight:700;margin-left:.5rem">{{ status_lbl }}</span>
+        </div>
+        <div class="doc-btns">
+          <a href="{{ '#' }}" target="_blank"
+             class="ghost-button" style="font-size:.78rem;padding:.38rem .85rem;text-decoration:none">
+            ⬇ View PDF
+          </a>
+          {% if app_doc.status != 'Verified' %}
+          <form method="POST" action="{{ '#' }}" style="display:inline">
+            <input type="hidden" name="ref" value="{{ a.id }}"/>
+            <button type="submit" class="primary-button" style="font-size:.78rem;padding:.38rem .85rem">
+              ✓ Verify
+            </button>
+          </form>
+          <form method="POST" action="{{ '#' }}" style="display:inline">
+            <input type="hidden" name="ref" value="{{ a.id }}"/>
+            <button type="submit" class="ghost-button" style="font-size:.78rem;padding:.38rem .85rem;color:#c0392b;border-color:#fca5a5">
+              ✗ Request re-upload
+            </button>
+          </form>
+          {% else %}
+          <form method="POST" action="{{ '#' }}" style="display:inline">
+            <input type="hidden" name="ref" value="{{ a.id }}"/>
+            <button type="submit" class="ghost-button" style="font-size:.75rem;padding:.3rem .7rem;color:#9b1c1c;border-color:#fca5a5">
+              Revoke
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <p style="font-size:.85rem;color:var(--muted);padding:.5rem 0">No documents submitted for this application.</p>
+    {% endfor %}
+
+    <!-- Approval actions -->
+    {% if a.status not in ('Approved','Rejected') %}
+    <div class="app-actions">
+      <form method="POST" action="{{ url_for('admin.approve_supplier', app_id=a.id) }}" style="display:inline">
+        <button type="submit" class="primary-button" data-shortcut="approve">
+          ✓ Approve supplier <kbd style="font-size:.7rem;background:rgba(255,255,255,.2);border-radius:4px;padding:.1rem .35rem;margin-left:.3rem">A</kbd>
+        </button>
+      </form>
+      <form method="POST" action="{{ '#' }}" style="display:inline">
+        <button type="submit" class="ghost-button" style="color:#c0392b;border-color:#fca5a5" data-shortcut="reject">
+          ✗ Reject <kbd style="font-size:.7rem;background:rgba(192,57,43,.08);border-radius:4px;padding:.1rem .35rem;margin-left:.3rem">R</kbd>
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px dashed var(--line)">
+      <p style="font-size:.82rem;color:var(--muted);margin:0">
+        {% if a.status == 'Approved' %}This supplier is approved and active on the platform.
+        {% else %}This application has been rejected.{% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Fleet management</h1>
+      <p class="topbar-copy">Add vehicles with required documentation. Vehicles on maintenance can be reinstated once roadworthy — status reverts to Available automatically.</p>
+    </div>
+  </div>
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Add vehicle</h2><p>All three documents are required. Vehicle stays <em>Pending Docs</em> until admin verifies them.</p></div>
+      <form method="POST" action="{{ '#' }}" enctype="multipart/form-data">
+        <div class="form-grid compact-two">
+          <label>Vehicle type<input name="type" placeholder="e.g. Superlink, 8-Ton Rigid" required/></label>
+          <label>Registration number<input name="reg" placeholder="e.g. ND 482-991" required/></label>
+          <label>Payload capacity<input name="payload" placeholder="e.g. 34 000 kg" required/></label>
+          <label>Cubic capacity<input name="cubicCapacity" placeholder="e.g. 120 CBM" required/></label>
+          <label>Availability<select name="availability"><option>Available</option><option>In Service</option><option>Maintenance</option></select></label>
+          <label>Loading type<select name="loadingType"><option>Side load</option><option>Rear load</option><option>Top load</option><option>Any</option></select></label>
+        </div>
+        <div style="background:rgba(255,200,0,.1);border:1px solid rgba(200,160,0,.25);border-radius:14px;padding:1rem;margin:.8rem 0">
+          <p style="margin:0 0 .7rem;font-weight:600;font-size:.9rem">📋 Required vehicle documents (PDF only)</p>
+          <div class="stack" style="gap:.6rem">
+            <label style="display:grid;gap:.3rem;font-weight:600;font-size:.88rem">Roadworthy certificate (required)<input type="file" name="doc_roadworthy" accept=".pdf" required/></label>
+            <label style="display:grid;gap:.3rem;font-weight:600;font-size:.88rem">Vehicle insurance certificate (required)<input type="file" name="doc_insurance" accept=".pdf" required/></label>
+            <label style="display:grid;gap:.3rem;font-weight:600;font-size:.88rem">Operator permit (required)<input type="file" name="doc_permit" accept=".pdf" required/></label>
+          </div>
+        </div>
+        <button type="submit" class="primary-button wide-button">Add vehicle to fleet</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Current fleet</h2></div>
+      <div class="table-like">
+        {% for v in fleet %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+          <div style="flex:1">
+            <strong>{{ v.type }}</strong>
+            <p class="muted" style="margin:.2rem 0 0">{{ v.reg }}</p>
+          </div>
+          <div>
+            <p style="margin:0">{{ v.payload }}</p>
+            <p class="muted" style="font-size:.82rem">{{ v.cbm }}</p>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <span class="pill {% if v.availability=='Available' %}badge{% endif %}"
+              style="{% if v.availability=='Pending Docs' or v.availability=='Maintenance' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+              {{ v.availability }}
+            </span>
+            {% if v.docs_status == 'Pending' %}
+              <span style="font-size:.72rem;color:#c0392b">Docs pending</span>
+            {% endif %}
+
+            {% if v.availability == 'Maintenance' %}
+            <form method="POST" action="{{ '#' }}" style="display:inline">
+              <button type="submit" class="primary-button" style="padding:.4rem .9rem;font-size:.8rem;border-radius:12px">✅ Reinstate — road worthy</button>
+            </form>
+            {% endif %}
+
+            {% if v.availability == 'Available' %}
+            <form method="POST" action="{{ '#' }}" style="display:inline">
+              <button type="submit" class="ghost-button" style="padding:.35rem .8rem;font-size:.78rem">Set maintenance</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

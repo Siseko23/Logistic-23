@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.cmp-card{border:1px solid var(--line);border-radius:18px;padding:1.1rem 1.2rem;background:rgba(255,255,255,.55)}
+.cmp-card.critical{border-color:rgba(155,28,28,.3);background:rgba(155,28,28,.03)}
+.cmp-card.urgent{border-color:rgba(122,88,0,.25);background:rgba(255,200,0,.04)}
+.status-pill{font-size:.73rem;font-weight:700;padding:.28rem .75rem;border-radius:999px}
+</style>
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Support</p>
+      <h1>Complaints inbox</h1>
+      <p class="topbar-copy">Review each complaint before deciding whether to forward it to the supplier. Suppliers only see complaints you explicitly forward.</p>
+    </div>
+  </div>
+
+  <!-- Status filter tabs -->
+  <div class="toggle-row" style="flex-wrap:wrap;gap:.4rem">
+    <a href="{{ url_for('admin.complaints') }}" class="nav-chip {% if not status_filter %}active{% endif %}">All ({{ complaints|length }})</a>
+    {% for s in status_options %}
+    <a href="{{ url_for('admin.complaints', status=s) }}" class="nav-chip {% if status_filter==s %}active{% endif %}">
+      {{ s }} ({{ counts[s] }})
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Complaint cards -->
+  {% for c in complaints %}
+  <div class="cmp-card {% if c.priority=='Critical' %}critical{% elif c.priority=='Urgent' %}urgent{% endif %}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+      <div>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.3rem">
+          <strong style="font-size:1rem">{{ c.ref }}</strong>
+          <span class="status-pill" style="background:{{ c.status_color }}18;color:{{ c.status_color }}">{{ c.status }}</span>
+          {% if c.priority == 'Critical' %}
+          <span class="status-pill" style="background:rgba(155,28,28,.12);color:#9b1c1c">🔴 Critical</span>
+          {% elif c.priority == 'Urgent' %}
+          <span class="status-pill" style="background:rgba(122,88,0,.12);color:#7a5800">🟡 Urgent</span>
+          {% endif %}
+        </div>
+        <p style="margin:0;font-size:.88rem;color:var(--muted)">
+          {{ c.category }}
+          {% if c.booking %} · Booking <strong>{{ c.booking.ref }}</strong>{% endif %}
+          {% if c.supplier %} · Supplier: <strong>{{ c.supplier.company_name }}</strong>{% endif %}
+        </p>
+        <p style="margin:.2rem 0 0;font-size:.8rem;color:var(--muted)">
+          From: <strong>{{ c.shipper.company_name or c.shipper.user.full_name }}</strong>
+          · Submitted {{ c.created_at.strftime('%d %b %Y, %H:%M') }}
+        </p>
+      </div>
+      <a href="{{ url_for('admin.complaint_detail', ref=c.ref) }}" class="primary-button" style="padding:.5rem 1.1rem;font-size:.85rem;white-space:nowrap">Review →</a>
+    </div>
+    <p style="margin:.7rem 0 0;font-size:.88rem;line-height:1.5;color:#374151">
+      {{ c.description[:160] }}{% if c.description|length > 160 %}…{% endif %}
+    </p>
+    {% if c.forwarded_at %}
+    <p style="margin:.5rem 0 0;font-size:.78rem;color:#7e22ce">
+      ✉ Forwarded to supplier {{ c.forwarded_at.strftime('%d %b at %H:%M') }}
+      {% if c.supplier_responded_at %} · Supplier responded {{ c.supplier_responded_at.strftime('%d %b at %H:%M') }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  {% else %}
+  <div style="padding:3rem;text-align:center;border:1px solid var(--line);border-radius:18px">
+    <p style="font-size:1.5rem">✅</p>
+    <p class="muted">No complaints {% if status_filter %}with status "{{ status_filter }}"{% endif %}.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

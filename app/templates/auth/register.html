@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Register — FreightFlow Nexus</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#155fa0;--accent-dark:#0e3a6b;--line:#e5e7eb;--bg:#f8f9fc;--paper:#fff;--text:#1a1a2e;--muted:#6b7280}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 1rem}
+.auth-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:2.2rem;width:100%;max-width:500px;box-shadow:0 8px 40px rgba(0,0,0,.07)}
+.brand-logo{font-size:1.1rem;font-weight:800;color:var(--accent-dark);letter-spacing:-.02em;text-align:center;margin-bottom:1.5rem}
+.brand-logo span{font-size:.6rem;font-weight:700;background:var(--accent);color:#fff;padding:.1rem .4rem;border-radius:5px;margin-left:.3rem}
+h1{font-family:'IBM Plex Serif',serif;font-size:1.4rem;margin-bottom:.2rem;text-align:center}
+.sub{color:var(--muted);text-align:center;font-size:.86rem;margin-bottom:1.6rem}
+.form-group{margin-bottom:.85rem}
+label{display:block;font-size:.76rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
+input,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:.6rem .85rem;font-size:.9rem;background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;font-family:inherit}
+input:focus,select:focus{border-color:var(--accent);background:#fff}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.9rem}
+.role-card{border:2px solid var(--line);border-radius:14px;padding:.9rem;cursor:pointer;transition:border-color .2s;text-align:center}
+.role-card:hover{border-color:var(--accent)}
+.role-card.selected{border-color:var(--accent);background:rgba(21,95,160,.04)}
+.role-card input[type=radio]{display:none}
+.role-icon{font-size:1.6rem;display:block;margin-bottom:.3rem}
+.role-name{font-weight:700;font-size:.88rem}
+.role-desc{font-size:.74rem;color:var(--muted);margin-top:.1rem}
+.btn{display:block;width:100%;padding:.7rem;border:none;border-radius:999px;font-size:.93rem;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.flash{padding:.55rem .9rem;border-radius:9px;font-size:.84rem;margin-bottom:.8rem;border:1px solid}
+.flash.error{background:#fadbd8;color:#922b21;border-color:#f1948a}
+.conditional{display:none}
+.conditional.show{display:block}
+a{color:var(--accent);text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="auth-card">
+  <div class="brand-logo">FreightFlow <span>Nexus</span></div>
+  <h1>Create your account</h1>
+  <p class="sub">Join South Africa's AI-powered freight marketplace</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('auth.register') }}" id="regForm">
+    <!-- Role selector -->
+    <p style="font-size:.76rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">I am a</p>
+    <div class="role-grid">
+      <label class="role-card selected" onclick="selectRole('shipper',this)">
+        <input type="radio" name="role" value="shipper" checked>
+        <span class="role-icon">📦</span>
+        <div class="role-name">Shipper</div>
+        <div class="role-desc">Send freight</div>
+      </label>
+      <label class="role-card" onclick="selectRole('supplier',this)">
+        <input type="radio" name="role" value="supplier">
+        <span class="role-icon">🚛</span>
+        <div class="role-name">Supplier</div>
+        <div class="role-desc">Carry freight</div>
+      </label>
+    </div>
+
+    <!-- Common fields -->
+    <div class="grid-2">
+      <div class="form-group">
+        <label>First name</label>
+        <input type="text" name="first_name" required placeholder="Sipho">
+      </div>
+      <div class="form-group">
+        <label>Last name</label>
+        <input type="text" name="last_name" required placeholder="Ndlovu">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" name="email" required placeholder="you@company.co.za">
+    </div>
+    <div class="form-group">
+      <label>Phone number</label>
+      <input type="tel" name="phone" placeholder="+27 82 000 0000">
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" required placeholder="Min. 8 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm password</label>
+        <input type="password" name="confirm_password" required placeholder="Repeat password">
+      </div>
+    </div>
+
+    <!-- Shipper-specific -->
+    <div class="conditional show" id="shipper-fields">
+      <div class="form-group">
+        <label>Account type</label>
+        <select name="account_type">
+          <option value="Business">Business</option>
+          <option value="Individual">Individual</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Company / trading name</label>
+        <input type="text" name="company_name" placeholder="Ubuntu Retail Group">
+      </div>
+    </div>
+
+    <!-- Supplier-specific -->
+    <div class="conditional" id="supplier-fields">
+      <div class="form-group">
+        <label>Company name</label>
+        <input type="text" name="company_name" placeholder="Kopano Linehaul (Pty) Ltd">
+      </div>
+      <div class="form-group">
+        <label>Base city</label>
+        <select name="base_city">
+          <option>Durban</option><option>Johannesburg</option><option>Cape Town</option>
+          <option>Pretoria</option><option>Gqeberha</option><option>Bloemfontein</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:.5rem">Create account →</button>
+    <p style="text-align:center;font-size:.82rem;color:var(--muted);margin-top:.9rem">
+      Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+    </p>
+  </form>
+</div>
+<script>
+function selectRole(role, el) {
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('shipper-fields').classList.toggle('show', role === 'shipper');
+  document.getElementById('supplier-fields').classList.toggle('show', role === 'supplier');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div><p class="eyebrow">Shipper portal</p><h1>My bookings</h1><p class="topbar-copy">Live status updates and tracking for all your shipments.</p></div>
+    <a href="{{ url_for('shipper.new_booking') }}" class="primary-button" style="align-self:flex-start;margin-top:.5rem">+ New shipment</a>
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterBookings('all',this)">All ({{ bookings|length }})</button>
+    <button class="nav-chip" onclick="filterBookings('In Transit',this)">In Transit</button>
+    <button class="nav-chip" onclick="filterBookings('Confirmed',this)">Confirmed</button>
+    <button class="nav-chip" onclick="filterBookings('Delivered',this)">Delivered</button>
+  </div>
+
+  <div class="table-like" id="bookings-list">
+    {% for b in bookings %}
+    <div class="table-row booking-item" data-status="{{ b.status }}" style="flex-wrap:wrap;gap:.8rem">
+      <div style="flex:1;min-width:180px">
+        <strong>{{ b.ref }}</strong>
+        <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+        <p style="margin:.3rem 0 0;font-size:.82rem;color:var(--accent)">{{ b.shipper }}</p>
+      </div>
+
+      <div style="flex:1;min-width:160px">
+        <p style="margin:0">{{ b.supplier }}</p>
+        <p class="muted" style="margin:.2rem 0 0;font-size:.85rem">{{ b.pieces }} {{ b.unitType }} · {{ b.commodity }}</p>
+      </div>
+
+      <!-- Inline tracking timeline -->
+      <div style="flex:2;min-width:220px">
+        <div style="display:flex;align-items:center;gap:0;font-size:.78rem">
+          {% set steps = [('Confirmed','Confirmed'),('In Transit','Collected'),('Delivered','Delivered')] %}
+          {% for sval, slabel in steps %}
+            {% set is_done = (b.status == 'Delivered') or (b.status == 'In Transit' and sval != 'Delivered') or (b.status == 'Confirmed' and sval == 'Confirmed') %}
+            <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+              <div style="width:22px;height:22px;border-radius:50%;border:2px solid {% if is_done %}var(--accent){% else %}var(--line){% endif %};background:{% if is_done %}var(--accent){% else %}transparent{% endif %};display:flex;align-items:center;justify-content:center">
+                {% if is_done %}<span style="color:#fff;font-size:.6rem">✓</span>{% endif %}
+              </div>
+              <span style="margin-top:.2rem;color:{% if is_done %}var(--accent-dark){% else %}var(--muted){% endif %}">{{ slabel }}</span>
+            </div>
+            {% if not loop.last %}
+            <div style="flex:1;height:2px;background:{% if b.status in ['In Transit','Delivered'] and sval=='Confirmed' %}var(--accent){% elif b.status=='Delivered' and sval=='In Transit' %}var(--accent){% else %}var(--line){% endif %};margin-bottom:1rem"></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% if b.collectedAt %}
+        <p style="font-size:.75rem;color:var(--muted);margin:.3rem 0 0">Collected: {{ b.collectedAt }}</p>
+        {% endif %}
+        {% if b.deliveredAt %}
+        <p style="font-size:.75rem;color:var(--green);margin:.1rem 0 0">Delivered: {{ b.deliveredAt }}</p>
+        {% endif %}
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+        <strong>{{ zar(b.value) }}</strong>
+        <span class="pill {% if b.status=='Delivered' %}badge{% endif %}">{{ b.status }}</span>
+        <a href="{{ url_for('shipper.booking_detail', ref=b.ref) }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.82rem">View details →</a>
+        <a href="{{ url_for('shipper.reorder', ref=b.ref) }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.82rem">🔁 Reorder</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-card" style="padding:2rem;text-align:center">
+      <p class="muted">No bookings yet. <a href="{{ url_for('shipper.new_booking') }}">Create your first shipment →</a></p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterBookings(status, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.booking-item').forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .route-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:1.4rem}
+  .rec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:.8rem}
+  .rec-option{border:1px solid var(--line);border-radius:16px;padding:1rem;text-align:center;transition:border-color .2s}
+  .rec-option.best-price{border-top:3px solid #27ae60}
+  .rec-option.fastest{border-top:3px solid #2980b9}
+  .rec-option.reliable{border-top:3px solid #8e44ad}
+  .rec-icon{font-size:1.6rem;display:block;margin-bottom:.4rem}
+  .rec-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:.3rem}
+  .rec-value{font-size:1.3rem;font-weight:700;color:var(--accent-dark)}
+  .rec-supplier{font-size:.8rem;color:var(--muted);margin-top:.2rem}
+  @media(max-width:600px){.rec-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>🗺️ Smart Route Recommendations</h1>
+      <p class="topbar-copy">FreightFlow compares suppliers on price, speed, and reliability for your most frequent routes — so you always pick the right option.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.new_booking') }}" class="primary-button">+ New shipment</a>
+    </div>
+  </div>
+
+  {% for rec in recommendations %}
+  <div class="route-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:.3rem">
+      <div>
+        <p class="eyebrow">Route</p>
+        <h2 style="margin:.2rem 0 0">{{ rec.route }}</h2>
+        <p class="small-note">{{ rec.distance }} km · Based on supplier data and FreightFlow booking history</p>
+      </div>
+      <a href="{{ url_for('shipper.new_booking') }}" class="primary-button" style="padding:.55rem 1.1rem;font-size:.88rem">Book this route →</a>
+    </div>
+    <div class="rec-grid">
+      <div class="rec-option best-price">
+        <span class="rec-icon">💰</span>
+        <div class="rec-label">Cheapest option</div>
+        <div class="rec-value">{{ zar(rec.cheapestCost) }}</div>
+        <div class="rec-supplier">{{ rec.cheapestSupplier }}</div>
+      </div>
+      <div class="rec-option fastest">
+        <span class="rec-icon">⚡</span>
+        <div class="rec-label">Fastest transit</div>
+        <div class="rec-value">{{ rec.fastestTime }}</div>
+        <div class="rec-supplier">{{ rec.fastestSupplier }}</div>
+      </div>
+      <div class="rec-option reliable">
+        <span class="rec-icon">⭐</span>
+        <div class="rec-label">Most reliable</div>
+        <div class="rec-value">{{ rec.reliablePct }}%</div>
+        <div class="rec-supplier">{{ rec.reliableSupplier }} · on-time rate</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Tip -->
+  <div class="stat-card" style="padding:1.3rem;background:linear-gradient(135deg,rgba(21,95,160,.07),rgba(21,95,160,.02))">
+    <p class="eyebrow" style="margin-bottom:.3rem">💡 Pro tip</p>
+    <p style="margin:0;font-size:.92rem">For long-haul routes like Durban → Johannesburg, reliability matters more than price — a single delayed delivery to a DC can cost more in penalties than the saving from a cheaper supplier.</p>
+  </div>
+</div>
+{% endblock %}

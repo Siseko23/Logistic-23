@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+.avatar{width:44px;height:44px;border-radius:50%;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:1rem;flex-shrink:0}
+.chat-bubble{max-width:78%;padding:.65rem .95rem;border-radius:18px;font-size:.9rem;line-height:1.5}
+.bubble-in{background:rgba(244,249,255,.9);border:1px solid var(--line);border-bottom-left-radius:6px;align-self:flex-start}
+.bubble-out{background:var(--accent);color:#fff;border-bottom-right-radius:6px;align-self:flex-end}
+.bubble-time{font-size:.72rem;opacity:.65;margin-top:.25rem}
+#chat-messages{display:flex;flex-direction:column;gap:.6rem;min-height:300px;max-height:400px;overflow-y:auto;padding:.5rem 0}
+.issue-tag{display:inline-block;font-size:.72rem;padding:.2rem .6rem;border-radius:999px;background:rgba(181,84,46,.12);color:#7a3b00;margin-top:.3rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Driver portal</p>
+      <h1>Chat with supplier</h1>
+      <p class="topbar-copy">Message {{ driver.supplierName }} directly — report issues, delays, or request instructions.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.8rem">
+          <div class="avatar">{{ driver.supplierName[:2].upper() }}</div>
+          <div>
+            <h2 style="margin:0">{{ driver.supplierName }}</h2>
+            <p class="muted" style="margin:.1rem 0 0;font-size:.82rem">Your transport company</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="chat-messages">
+        {% if messages %}
+          {% for msg in messages %}
+          <div style="display:flex;flex-direction:column;{% if msg.sender=='driver' %}align-items:flex-end{% else %}align-items:flex-start{% endif %}">
+            <div class="chat-bubble {% if msg.sender=='driver' %}bubble-out{% else %}bubble-in{% endif %}">
+              {{ msg.text }}
+              {% if msg.issue_type %}<p class="issue-tag">⚠ {{ msg.issue_type }}</p>{% endif %}
+              {% if msg.attachment %}<p style="font-size:.78rem;margin:.3rem 0 0;opacity:.8">📎 {{ msg.attachment }}</p>{% endif %}
+            </div>
+            <p class="bubble-time" style="{% if msg.sender=='driver' %}text-align:right{% endif %}">{{ msg.time }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align:center;margin-top:2rem;color:var(--muted)">
+            <p style="font-size:1.5rem">💬</p>
+            <p>No messages yet. Use the form below to contact your supplier.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <form method="POST" action="{{ '#' }}" enctype="multipart/form-data" style="margin-top:1rem">
+        <div style="margin-bottom:.6rem">
+          <p style="font-size:.85rem;font-weight:600;margin:0 0 .4rem">Issue type (optional)</p>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            {% for issue in ['Breakdown','Delay','Gate refusal','Wrong address','Cargo issue','Other'] %}
+            <label style="cursor:pointer">
+              <input type="radio" name="issue_type" value="{{ issue }}" style="display:none" onchange="document.getElementById('issue-display').textContent='Issue: '+this.value"/>
+              <span class="issue-tag" style="cursor:pointer;border:1px solid transparent" onclick="this.style.borderColor='var(--accent)'">{{ issue }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <p id="issue-display" style="font-size:.78rem;color:var(--accent);margin:.3rem 0 0"></p>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:flex-end">
+          <textarea name="message" rows="2" placeholder="Type your message…" style="flex:1;resize:none;border-radius:14px;border:1px solid var(--line);padding:.65rem .85rem;background:rgba(255,255,255,.9)" required></textarea>
+          <div style="display:flex;flex-direction:column;gap:.4rem">
+            <label style="cursor:pointer;padding:.55rem .75rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.6);font-size:.8rem;text-align:center" title="Attach POD photo or doc">
+              📎
+              <input type="file" name="attachment" accept=".pdf,.jpg,.png" style="display:none" onchange="document.getElementById('attach-name').textContent=this.files[0]?.name||''"/>
+            </label>
+            <button type="submit" class="primary-button" style="padding:.55rem .9rem">Send</button>
+          </div>
+        </div>
+        <p id="attach-name" style="font-size:.75rem;color:var(--accent);margin:.3rem 0 0"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Quick report shortcuts</h2></div>
+      <div class="stack" style="gap:.6rem">
+        {% for shortcut in [('🚛','Running late','I am running approximately 30 minutes behind schedule due to traffic.'),('🔧','Vehicle breakdown','Vehicle has broken down. Please arrange assistance or a replacement vehicle.'),('🚧','Gate refusal','Gate refused entry. Awaiting instructions from shipper / consignee.'),('📦','Cargo issue','There is a cargo discrepancy or damage at collection. Please advise.'),('✅','Arrived at destination','I have arrived at the delivery address and am waiting for offloading.')] %}
+        <button class="ghost-button" style="text-align:left;padding:.7rem 1rem;border-radius:14px;border:1px solid var(--line)" onclick="document.querySelector('textarea[name=message]').value='{{ shortcut[2] }}'">
+          <strong>{{ shortcut[0] }} {{ shortcut[1] }}</strong>
+          <p class="muted" style="font-size:.8rem;margin:.2rem 0 0">{{ shortcut[2][:60] }}…</p>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msgs = document.getElementById('chat-messages');
+if (msgs) msgs.scrollTop = msgs.scrollHeight;
+</script>
+{% endblock %}

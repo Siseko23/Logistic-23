@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · <a href="{{ url_for('supplier.bookings') }}" style="color:var(--accent);text-decoration:none">Purchase orders</a> · {{ po.id }}</p>
+      <h1>Purchase order {{ po.id }}</h1>
+      <p class="topbar-copy">Booking {{ po.ref }} &middot; Issued {{ po.issuedAt }}</p>
+    </div>
+    <div style="align-self:flex-start;margin-top:.5rem;display:flex;gap:.5rem;align-items:center">
+      <span class="pill {% if po.status=='Paid' or po.status=='Invoice Received' %}badge{% endif %}"
+        style="{% if po.status=='Invoice Pending' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+        {{ po.status }}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- Left: PO document display -->
+    <div class="stack">
+      <!-- PO Document Card -->
+      <section class="panel" style="border:2px solid var(--line)">
+        <div style="border-bottom:1px solid var(--line);padding-bottom:1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <p style="margin:0;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--accent);letter-spacing:.08em">FreightFlow Nexus — Purchase Order</p>
+            <h2 style="margin:.3rem 0 0;font-size:1.4rem">{{ po.id }}</h2>
+            <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">Issued {{ po.issuedAt }}</p>
+          </div>
+          <div style="text-align:right">
+            <p class="muted" style="font-size:.78rem;margin:0">Booking reference</p>
+            <strong style="font-size:1rem">{{ po.ref }}</strong>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <p class="muted" style="font-size:.72rem;text-transform:uppercase;font-weight:600;margin:0 0 .3rem">Issued to (Supplier)</p>
+            <strong>{{ po.supplierName }}</strong>
+            <p style="margin:.1rem 0 0;font-size:.85rem">{{ po.vehicleReg }}</p>
+            <p style="margin:.1rem 0 0;font-size:.85rem">Driver: {{ po.driverName }}</p>
+          </div>
+          <div>
+            <p class="muted" style="font-size:.72rem;text-transform:uppercase;font-weight:600;margin:0 0 .3rem">Issued by</p>
+            <strong>FreightFlow Nexus (Pty) Ltd</strong>
+            <p style="margin:.1rem 0 0;font-size:.85rem">VAT: 4480193560</p>
+            <p style="margin:.1rem 0 0;font-size:.85rem">finance@freightflownexus.co.za</p>
+          </div>
+        </div>
+
+        <div style="background:rgba(47,108,87,.05);border-radius:12px;padding:.8rem 1rem;margin-bottom:1rem">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;font-size:.82rem">
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Route</p><strong>{{ po.route }}</strong></div>
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Commodity</p><strong>{{ po.commodity }}</strong></div>
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Load</p><strong>{{ po.pieces }} {{ po.unitType }}</strong></div>
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Collection date</p><strong>{{ po.collectionDate }}</strong></div>
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Delivery date</p><strong>{{ po.deliveryDate }}</strong></div>
+            <div><p class="muted" style="margin:0 0 .15rem;font-size:.72rem">Shipper</p><strong>{{ po.shipper }}</strong></div>
+          </div>
+        </div>
+
+        <div style="font-size:.82rem;margin-bottom:1rem">
+          <p class="muted" style="font-size:.72rem;text-transform:uppercase;font-weight:600;margin:0 0 .4rem">Addresses</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+            <div style="background:rgba(0,0,0,.03);padding:.6rem .8rem;border-radius:8px">
+              <p class="muted" style="margin:0 0 .2rem;font-size:.7rem">📦 Collection</p>
+              {{ po.collectionAddress }}
+            </div>
+            <div style="background:rgba(0,0,0,.03);padding:.6rem .8rem;border-radius:8px">
+              <p class="muted" style="margin:0 0 .2rem;font-size:.7rem">🏁 Delivery</p>
+              {{ po.deliveryAddress }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Rate breakdown -->
+        <div style="border-top:1px solid var(--line);padding-top:.8rem">
+          <table style="width:100%;font-size:.85rem;border-collapse:collapse">
+            <tr style="border-top:1px solid var(--line);font-weight:700;font-size:.95rem">
+              <td style="padding:.5rem 0">Amount payable to you</td>
+              <td style="text-align:right;padding:.5rem 0;color:var(--accent-dark)">R {{ "{:,.2f}".format(po.agreedRate) }}</td>
+            </tr>
+          </table>
+          <p class="muted" style="font-size:.76rem;margin:.6rem 0 0">Payment terms: 7 business days from invoice receipt and verification. Paid to your registered banking details on file.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right: invoice upload + status -->
+    <div class="stack">
+      {% if po.invoiceUploaded %}
+      <section class="panel" style="border:1px solid rgba(47,108,87,.3);background:rgba(47,108,87,.04)">
+        <div class="panel-head"><h2>Invoice submitted ✅</h2></div>
+        <div style="display:flex;align-items:center;gap:.8rem;padding:.8rem;background:rgba(47,108,87,.08);border-radius:12px">
+          <span style="font-size:1.6rem">📄</span>
+          <div>
+            <strong style="font-size:.9rem">{{ po.invoiceFilename }}</strong>
+            <p class="muted" style="font-size:.78rem;margin:.2rem 0 0">Uploaded {{ po.invoiceUploadedAt }}</p>
+          </div>
+          <span class="pill badge" style="margin-left:auto">Received</span>
+        </div>
+        <p class="muted" style="font-size:.82rem;margin:.8rem 0 0">Your invoice has been received by the FreightFlow finance team. Payment will be processed within 7 business days. You will be notified once the payment is released.</p>
+        <div style="margin-top:.8rem;padding:.7rem .9rem;background:rgba(255,200,0,.1);border:1px solid rgba(255,200,0,.3);border-radius:10px;font-size:.82rem">
+          ⚠️ Need to re-submit? Contact <strong>finance@freightflownexus.co.za</strong> quoting PO <strong>{{ po.id }}</strong>.
+        </div>
+      </section>
+      {% else %}
+      <section class="panel" style="border:1px solid rgba(155,28,28,.2)">
+        <div class="panel-head">
+          <h2>Upload your invoice</h2>
+          <p style="color:#9b1c1c;font-weight:600">⏳ Action required to receive payment</p>
+        </div>
+        <div style="background:rgba(155,28,28,.04);border:1px dashed rgba(155,28,28,.3);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
+          <p class="muted" style="font-size:.84rem;margin:0 0 .5rem">Your invoice must include:</p>
+          <ul style="margin:0;padding:0 0 0 1.2rem;font-size:.83rem;line-height:1.8;color:var(--muted)">
+            <li>Your company name and VAT number (if registered)</li>
+            <li>This purchase order number: <strong style="color:var(--text)">{{ po.id }}</strong></li>
+            <li>Booking reference: <strong style="color:var(--text)">{{ po.ref }}</strong></li>
+            <li>Invoice amount: <strong style="color:var(--text)">R {{ "{:,.2f}".format(po.agreedRate) }}</strong></li>
+            <li>Your banking details</li>
+            <li>Invoice date and unique invoice number</li>
+          </ul>
+        </div>
+        <form method="POST" action="{{ '#' }}" enctype="multipart/form-data">
+          <div style="margin-bottom:.8rem">
+            <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.4rem">Select invoice PDF</label>
+            <input type="file" name="invoice_file" accept=".pdf,.PDF" required
+              style="display:block;width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.9);font-size:.85rem">
+            <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">PDF format, max 10 MB</p>
+          </div>
+          <button type="submit" class="primary-button" style="width:100%">📤 Submit invoice for payment</button>
+        </form>
+      </section>
+      {% endif %}
+
+      <section class="panel">
+        <div class="panel-head"><h2>PO summary</h2></div>
+        <div class="stack" style="gap:.35rem">
+          <div class="summary-row"><span>PO number</span><strong>{{ po.id }}</strong></div>
+          <div class="summary-row"><span>Booking ref</span><strong>{{ po.ref }}</strong></div>
+          <div class="summary-row"><span>Status</span>
+            <span class="pill {% if po.status != 'Invoice Pending' %}badge{% endif %}"
+              style="{% if po.status=='Invoice Pending' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+              {{ po.status }}
+            </span>
+          </div>
+          <div class="summary-row"><span>Your rate</span><strong style="color:var(--accent-dark)">R {{ "{:,.2f}".format(po.agreedRate) }}</strong></div>
+          {% if po.invoiceUploadedAt %}
+          <div class="summary-row"><span>Invoice received</span><strong>{{ po.invoiceUploadedAt }}</strong></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="panel" style="background:rgba(47,108,87,.04)">
+        <div class="panel-head"><h2>Need help?</h2></div>
+        <p class="muted" style="font-size:.85rem;margin:0 0 .5rem">For invoice queries or payment status enquiries:</p>
+        <p style="font-size:.88rem;margin:0">📧 <strong>finance@freightflownexus.co.za</strong></p>
+        <p style="font-size:.88rem;margin:.3rem 0 0">📞 <strong>+27 31 555 0100</strong> (Mon–Fri, 08:00–17:00)</p>
+        <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Always quote your PO number and booking reference in all correspondence.</p>
+      </section>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Waybill — {{ booking.ref }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',sans-serif;color:#12253f;background:#fff;padding:2rem;max-width:800px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:1.5rem;border-bottom:3px solid #155fa0;margin-bottom:1.5rem}
+    .logo{display:flex;align-items:center;gap:.75rem}
+    .logo-mark{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#155fa0,#5f9dd5);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem}
+    .waybill-num{text-align:right}
+    .waybill-num h1{font-size:1.8rem;color:#155fa0}
+    .waybill-num p{font-size:.82rem;color:#5f7692}
+    .section{margin-bottom:1.5rem}
+    .section-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:#5f7692;margin-bottom:.6rem;padding-bottom:.3rem;border-bottom:1px solid #e8f0fc}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+    .field{margin-bottom:.6rem}
+    .field-label{font-size:.75rem;color:#5f7692;margin-bottom:.15rem}
+    .field-value{font-weight:600;font-size:.92rem}
+    .route-banner{background:#f0f6ff;border:1px solid #c2d8f5;border-radius:12px;padding:1rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem}
+    .route-dot{width:12px;height:12px;border-radius:50%;background:#155fa0;flex-shrink:0}
+    .route-line{flex:1;height:2px;background:linear-gradient(90deg,#155fa0,#c2d8f5);margin:0 .5rem}
+    .cargo-table{width:100%;border-collapse:collapse}
+    .cargo-table th{background:#f0f6ff;padding:.6rem .8rem;text-align:left;font-size:.78rem;color:#5f7692;text-transform:uppercase;letter-spacing:.06em}
+    .cargo-table td{padding:.6rem .8rem;border-bottom:1px solid #e8f0fc;font-size:.88rem}
+    .status-tag{display:inline-flex;padding:.3rem .8rem;border-radius:999px;font-size:.75rem;font-weight:700;text-transform:uppercase}
+    .status-tag.transit{background:rgba(21,95,160,.1);color:#0f4676}
+    .status-tag.delivered{background:rgba(47,108,87,.1);color:#2f6c57}
+    .status-tag.confirmed{background:rgba(21,95,160,.08);color:#155fa0}
+    .signatures{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem}
+    .sig-box{border-top:2px dashed #c2d8f5;padding-top:.6rem}
+    .sig-box p{font-size:.78rem;color:#5f7692}
+    .footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e8f0fc;text-align:center;font-size:.75rem;color:#5f7692}
+    .print-bar{position:fixed;bottom:0;left:0;right:0;background:#155fa0;color:#fff;padding:.8rem 2rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;print:none}
+    @media print{.print-bar{display:none}.no-print{display:none}}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">FF</div>
+    <div>
+      <strong style="font-size:1.1rem">FreightFlow Nexus</strong><br>
+      <span style="font-size:.78rem;color:#5f7692">Digital freight marketplace</span>
+    </div>
+  </div>
+  <div class="waybill-num">
+    <h1>WAYBILL</h1>
+    <p>{{ booking.ref }}</p>
+    <span class="status-tag {{ 'delivered' if booking.status == 'Delivered' else 'transit' if booking.status == 'In Transit' else 'confirmed' }}">{{ booking.status }}</span>
+  </div>
+</div>
+
+<!-- Route banner -->
+<div class="route-banner">
+  <div style="text-align:center">
+    <p style="font-size:.7rem;color:#5f7692;margin-bottom:.2rem">COLLECTION</p>
+    <strong style="font-size:.9rem">{{ booking.route.split(' → ')[0] }}</strong>
+  </div>
+  <div class="route-line"></div>
+  <div style="text-align:center;font-size:1.2rem">🚛</div>
+  <div class="route-line"></div>
+  <div style="text-align:center">
+    <p style="font-size:.7rem;color:#5f7692;margin-bottom:.2rem">DELIVERY</p>
+    <strong style="font-size:.9rem">{{ booking.route.split(' → ')[1] }}</strong>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Shipper details -->
+  <div class="section">
+    <div class="section-title">Shipper / Consignor</div>
+    <div class="field"><div class="field-label">Company</div><div class="field-value">{{ booking.shipper }}</div></div>
+    <div class="field"><div class="field-label">Collection address</div><div class="field-value">{{ booking.collectionAddress }}</div></div>
+    <div class="field"><div class="field-label">Contact</div><div class="field-value">{{ booking.collectionContact }}</div></div>
+    <div class="field"><div class="field-label">Phone</div><div class="field-value">{{ booking.collectionPhone }}</div></div>
+    {% if booking.collectedAt %}<div class="field"><div class="field-label">Collected at</div><div class="field-value">{{ booking.collectedAt }}</div></div>{% endif %}
+  </div>
+
+  <!-- Receiver details -->
+  <div class="section">
+    <div class="section-title">Receiver / Consignee</div>
+    <div class="field"><div class="field-label">Delivery address</div><div class="field-value">{{ booking.deliveryAddress }}</div></div>
+    <div class="field"><div class="field-label">Contact</div><div class="field-value">{{ booking.deliveryContact }}</div></div>
+    <div class="field"><div class="field-label">Phone</div><div class="field-value">{{ booking.deliveryPhone }}</div></div>
+    {% if booking.destinationType %}<div class="field"><div class="field-label">Destination type</div><div class="field-value">{{ booking.destinationType }}</div></div>{% endif %}
+    {% if booking.deliveredAt %}<div class="field"><div class="field-label">Delivered at</div><div class="field-value">{{ booking.deliveredAt }}</div></div>{% endif %}
+  </div>
+</div>
+
+<!-- Carrier details -->
+<div class="section">
+  <div class="section-title">Carrier / Transport details</div>
+  <div class="two-col">
+    <div>
+      <div class="field"><div class="field-label">Supplier</div><div class="field-value">{{ booking.supplier }}</div></div>
+      <div class="field"><div class="field-label">Driver</div><div class="field-value">{{ booking.driverName }}</div></div>
+    </div>
+    <div>
+      <div class="field"><div class="field-label">Vehicle registration</div><div class="field-value">{{ booking.vehicleReg }}</div></div>
+      {% if booking.dcSlotDate %}<div class="field"><div class="field-label">DC delivery slot</div><div class="field-value">{{ booking.dcSlotDate }} · {{ booking.dcSlotTime }}</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Cargo details -->
+<div class="section">
+  <div class="section-title">Cargo description</div>
+  <table class="cargo-table">
+    <thead>
+      <tr><th>Description</th><th>Qty</th><th>Unit</th><th>Weight (kg)</th><th>Booking ref</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ booking.commodity }}</td>
+        <td>{{ booking.pieces }}</td>
+        <td>{{ booking.unitType }}</td>
+        <td>{{ booking.pieces * booking.weightPerItem }} kg total</td>
+        <td>{{ booking.ref }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% if booking.dcBookingRef %}
+<div class="section">
+  <div class="section-title">DC reference</div>
+  <div class="field"><div class="field-label">DC booking reference</div><div class="field-value">{{ booking.dcBookingRef }}</div></div>
+</div>
+{% endif %}
+
+<!-- Signatures -->
+<div class="signatures">
+  <div class="sig-box">
+    <p>Collection signature (driver)</p>
+    <div style="height:50px"></div>
+    <p>Name: ______________________ Date: _______</p>
+  </div>
+  <div class="sig-box">
+    <p>Delivery signature (receiver)</p>
+    <div style="height:50px"></div>
+    <p>Name: ______________________ Date: _______</p>
+  </div>
+</div>
+
+<div class="footer">
+  <p>FreightFlow Nexus · support@movement.com · Generated {{ booking.createdAt }}</p>
+  <p style="margin-top:.3rem">This waybill is a legal freight document. Keep a copy for your records.</p>
+</div>
+
+<!-- Print/download bar -->
+<div class="print-bar no-print">
+  <span>Waybill — {{ booking.ref }}</span>
+  <div style="display:flex;gap:.75rem">
+    <button onclick="window.print()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:.5rem 1.2rem;font-size:.88rem;cursor:pointer;font-family:inherit">🖨 Print / Save as PDF</button>
+    <a href="javascript:history.back()" style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:.5rem 1.2rem;font-size:.88rem;text-decoration:none">← Back</a>
+  </div>
+</div>
+
+</body>
+</html>

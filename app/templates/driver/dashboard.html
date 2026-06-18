@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Driver portal</p>
+      <h1>{{ driver.name }}</h1>
+      <p class="topbar-copy">{{ driver.supplierName }} · {{ driver.vehicleType }} · {{ driver.vehicleReg }}</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+      <span style="font-size:.82rem;font-weight:600;padding:.3rem .85rem;border-radius:999px;background:{% if driver.status=='Active' %}rgba(47,108,87,.12){% else %}rgba(255,200,0,.18){% endif %};color:{% if driver.status=='Active' %}var(--green){% else %}#7a5800{% endif %}">{{ driver.status }}</span>
+      {% if driver.status == 'License Expiring' %}
+      <span style="font-size:.75rem;color:#c0392b">⚠ License expires {{ driver.licenseExpiry }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <p class="stat-label">Driver rating</p>
+      <strong>{{ driver.rating }} / 5.0</strong>
+      <p class="muted">Based on {{ driver.totalDeliveries }} deliveries</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">On-time rate</p>
+      <strong>{{ driver.onTimeRate }}%</strong>
+      <p class="muted">Last 30 days</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">My vehicle</p>
+      <strong>{{ driver.vehicleReg }}</strong>
+      <p class="muted">{{ driver.vehicleType }}</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">License type</p>
+      <strong>{{ driver.licenseType }}</strong>
+      <p class="muted">Exp. {{ driver.licenseExpiry }}</p>
+    </article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>My active bookings</h2><p>Tap a booking to view the waybill and QR scan links for collection and delivery.</p></div>
+    {% if bookings %}
+    <div class="table-like">
+      {% for b in bookings %}
+      <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+        <div style="flex:1;min-width:160px">
+          <strong>{{ b.ref }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+          {% if b.destinationType == 'Distribution Centre' %}
+          <span style="font-size:.75rem;font-weight:600;color:#7a5800;background:rgba(255,200,0,.18);padding:.2rem .6rem;border-radius:999px;display:inline-block;margin-top:.3rem">DC · {{ b.dcSlotTime }}</span>
+          {% endif %}
+        </div>
+        <div style="flex:1">
+          <p>{{ b.shipper }}</p>
+          <p class="muted">{{ b.pieces }} {{ b.unitType }} · {{ b.commodity }}</p>
+        </div>
+        <div style="flex:1">
+          <p>{{ b.status }}</p>
+          {% if b.collectedAt and not b.deliveredAt %}<p style="font-size:.8rem;color:var(--accent)">In transit since {{ b.collectedAt }}</p>{% endif %}
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <a href="{{ '#' }}" class="primary-button" style="padding:.5rem 1rem;font-size:.85rem">Open booking</a>
+          {% if b.status == 'Confirmed' %}
+          <a href="{{ '#' }}" class="ghost-button" style="padding:.5rem 1rem;font-size:.85rem">Scan collect</a>
+          {% elif b.status == 'In Transit' %}
+          <a href="{{ '#' }}" class="ghost-button" style="padding:.5rem 1rem;font-size:.85rem">Scan deliver</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:2rem;color:var(--muted)">No active bookings assigned to you right now.</div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Quick actions</h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      <a href="{{ url_for('auth.profile') }}" class="inline-card" style="text-decoration:none;display:block">
+        <strong>My profile &amp; documents</strong>
+        <p class="muted" style="font-size:.85rem;margin:.3rem 0 0">View license, vehicle, and compliance docs</p>
+      </a>
+      {% for b in bookings %}
+      {% if b.status == 'Confirmed' %}
+      <a href="{{ '#' }}" class="inline-card" style="text-decoration:none;display:block;border-color:var(--accent)">
+        <strong style="color:var(--accent)">Scan-out — {{ b.ref }}</strong>
+        <p class="muted" style="font-size:.85rem;margin:.3rem 0 0">Confirm collection for {{ b.shipper }}</p>
+      </a>
+      {% elif b.status == 'In Transit' %}
+      <a href="{{ '#' }}" class="inline-card" style="text-decoration:none;display:block;border-color:var(--green)">
+        <strong style="color:var(--green)">Scan-in — {{ b.ref }}</strong>
+        <p class="muted" style="font-size:.85rem;margin:.3rem 0 0">Confirm delivery for {{ b.shipper }}</p>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

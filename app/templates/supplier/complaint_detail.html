@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Complaints</p>
+      <h1>{{ complaint.ref }}</h1>
+      <p class="topbar-copy">{{ complaint.category }}{% if complaint.booking %} — Booking {{ complaint.booking.ref }}{% endif %}</p>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <span style="font-size:.78rem;font-weight:700;padding:.32rem .85rem;border-radius:999px;background:{{ complaint.status_color }}18;color:{{ complaint.status_color }}">
+        {{ complaint.status }}
+      </span>
+      <a href="{{ url_for('supplier.complaints') }}" class="ghost-button">← Back</a>
+    </div>
+  </div>
+
+  {% if complaint.status == 'Forwarded to Supplier' %}
+  <div style="background:rgba(155,28,28,.07);border:1px solid rgba(155,28,28,.2);border-radius:18px;padding:1rem 1.2rem;display:flex;gap:.9rem;align-items:center">
+    <span style="font-size:1.3rem">⏰</span>
+    <p style="margin:0;font-size:.9rem;color:#9b1c1c"><strong>Response required.</strong> Please submit your response to this complaint within 4 hours. FreightFlow admin will mediate the resolution.</p>
+  </div>
+  {% endif %}
+
+  <div class="grid two-up">
+
+    <!-- Complaint + response -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Complaint details</h2></div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem">
+          <span style="font-size:.78rem;font-weight:700;padding:.25rem .7rem;border-radius:999px;background:rgba(21,95,160,.1);color:#1e40af">{{ complaint.category }}</span>
+          <span style="font-size:.78rem;font-weight:700;padding:.25rem .7rem;border-radius:999px;
+            background:{% if complaint.priority=='Critical' %}rgba(155,28,28,.12){% elif complaint.priority=='Urgent' %}rgba(122,88,0,.12){% else %}rgba(21,95,160,.08){% endif %};
+            color:{% if complaint.priority=='Critical' %}#9b1c1c{% elif complaint.priority=='Urgent' %}#7a5800{% else %}#1e40af{% endif %}">
+            {{ complaint.priority }} priority
+          </span>
+        </div>
+        <div style="background:rgba(244,249,255,.8);border:1px solid var(--line);border-radius:14px;padding:1rem;line-height:1.65;font-size:.92rem">
+          {{ complaint.description }}
+        </div>
+        <p class="muted" style="font-size:.8rem;margin:.6rem 0 0">
+          Forwarded by FreightFlow admin on {{ complaint.forwarded_at.strftime('%d %b %Y at %H:%M') if complaint.forwarded_at else '—' }}
+        </p>
+        <div style="margin-top:.8rem;background:rgba(122,88,0,.05);border:1px solid rgba(122,88,0,.15);border-radius:12px;padding:.8rem">
+          <p style="margin:0;font-size:.83rem;color:#7a5800">ℹ The shipper has been advised not to contact you directly. All communication is mediated by FreightFlow. Please provide a factual, professional response.</p>
+        </div>
+      </section>
+
+      <!-- Response form or existing response -->
+      {% if complaint.status == 'Forwarded to Supplier' %}
+      <section class="panel">
+        <div class="panel-head"><h2>Your response</h2></div>
+        <form method="POST">
+          <label>
+            <span style="font-size:.88rem;font-weight:600;display:block;margin-bottom:.4rem">Provide your account of events <span style="color:#9b1c1c">*</span></span>
+            <textarea name="supplier_response" rows="7" placeholder="Explain what happened from your side. Include: timeline of events, any evidence you can reference (POD, photos, driver logs), the reason for any delay or issue, and steps taken or proposed to resolve." style="width:100%;border:1px solid var(--line);border-radius:12px;padding:.75rem;font-size:.88rem;background:rgba(255,255,255,.85);resize:vertical" required></textarea>
+          </label>
+          <p class="muted" style="font-size:.82rem;margin:.4rem 0 .8rem">Your response will be reviewed by the FreightFlow admin team, who will then mediate the resolution with the shipper.</p>
+          <button type="submit" class="primary-button wide-button">Submit response</button>
+        </form>
+      </section>
+
+      {% elif complaint.supplier_response %}
+      <section class="panel">
+        <div class="panel-head"><h2>Your submitted response</h2></div>
+        <div style="background:rgba(126,34,206,.05);border:1px solid rgba(126,34,206,.18);border-radius:14px;padding:1rem;line-height:1.65;font-size:.92rem">
+          {{ complaint.supplier_response }}
+        </div>
+        <p class="muted" style="font-size:.8rem;margin:.6rem 0 0">
+          Submitted {{ complaint.supplier_responded_at.strftime('%d %b %Y at %H:%M') if complaint.supplier_responded_at else '—' }}. FreightFlow admin is reviewing your response.
+        </p>
+      </section>
+      {% endif %}
+
+      {% if complaint.status in ('Resolved','Closed') and complaint.resolution_notes %}
+      <section class="panel" style="border-color:rgba(47,108,87,.25)">
+        <div class="panel-head"><h2 style="color:var(--green)">✅ Resolution</h2></div>
+        <p style="font-size:.92rem;line-height:1.6;margin:0">{{ complaint.resolution_notes }}</p>
+        {% if complaint.resolved_at %}
+        <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Resolved {{ complaint.resolved_at.strftime('%d %b %Y at %H:%M') }}</p>
+        {% endif %}
+      </section>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Summary</h2></div>
+        <div>
+          {% set rows = [
+            ('Reference', complaint.ref),
+            ('Category', complaint.category),
+            ('Priority', complaint.priority),
+            ('Status', complaint.status),
+            ('Submitted', complaint.created_at.strftime('%d %b %Y')),
+          ] %}
+          {% for label, val in rows %}
+          <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--line);font-size:.88rem">
+            <span class="muted">{{ label }}</span><strong>{{ val }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      {% if complaint.booking %}
+      <section class="panel">
+        <div class="panel-head"><h2>Linked booking</h2></div>
+        {% set b = complaint.booking %}
+        <div>
+          {% for label, val in [('Ref', b.ref), ('Route', b.route or '—'), ('Status', b.status), ('Date', b.collection_date|string if b.collection_date else '—')] %}
+          <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--line);font-size:.88rem">
+            <span class="muted">{{ label }}</span><strong>{{ val }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <div style="border:1px solid var(--line);border-radius:16px;padding:1rem">
+        <p style="margin:0 0 .3rem;font-weight:600;font-size:.9rem">FreightFlow support</p>
+        <p class="muted" style="font-size:.83rem;margin:0">Questions about this complaint?</p>
+        <p class="muted" style="font-size:.83rem;margin:.2rem 0 0">Email: <a href="mailto:support@freightflow.co.za">support@freightflow.co.za</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

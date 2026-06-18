@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-space" style="max-width:860px;margin:0 auto">
+  <div class="grid two-up">
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Sign in</h2>
+        <p>Select your role to access the right portal.</p>
+      </div>
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <!-- Role selector -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.3rem">
+          {% for r, label, icon in [('shipper','Shipper','📦'),('supplier','Supplier','🚛'),('driver','Driver','🧑‍✈️'),('admin','Admin','⚙️')] %}
+          <label style="border:none;background:none;padding:0;font-weight:normal;cursor:pointer">
+            <input type="radio" name="role" value="{{ r }}" {% if loop.first %}checked{% endif %} style="display:none" onchange="this.form.submit()"/>
+            <span class="nav-chip" style="display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.6rem .5rem;border-radius:10px;text-align:center;font-size:.78rem"
+              onclick="this.previousElementSibling.checked=true;this.previousElementSibling.dispatchEvent(new Event('change'))">
+              <span style="font-size:1.1rem">{{ icon }}</span>{{ label }}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="form-grid" style="margin-bottom:1rem">
+          <label>Email address<input name="email" type="email" placeholder="name@company.co.za" value="demo@freightflow.co.za"/></label>
+          <label>Password<input name="password" type="password" placeholder="••••••••" value="demo"/></label>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          {% for mode, label in [('auth.login','Log in'),('auth.register','Create account'),('reset','Reset password')] %}
+          <button type="submit" name="mode" value="{{ mode }}" class="{% if mode=='auth.login' %}primary-button{% else %}ghost-button{% endif %}" style="font-size:.875rem">{{ label }}</button>
+          {% endfor %}
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Access guide</h2>
+        <p>Each role has a dedicated workspace.</p>
+      </div>
+      <div class="stack">
+        {% for title, desc in [
+          ('Shippers', 'Request shipments, compare quotes, manage payments, and track deliveries.'),
+          ('Suppliers', 'Respond to bookings, manage your fleet, drivers, and rate cards.'),
+          ('Drivers', 'View assigned bookings, scan cargo, and communicate with your dispatcher.'),
+          ('Admins', 'Approve suppliers, intervene on bookings, manage settings and reports.'),
+        ] %}
+        <article class="inline-card">
+          <strong style="font-family:'IBM Plex Serif',Georgia,serif;font-size:.95rem">{{ title }}</strong>
+          <p class="muted" style="margin:.25rem 0 0;font-size:.84rem">{{ desc }}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}

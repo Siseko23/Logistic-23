@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .insight-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.3rem 1.5rem;display:flex;gap:1rem;align-items:flex-start;transition:box-shadow .2s}
+  .insight-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08)}
+  .insight-card.positive{border-left:4px solid #27ae60}
+  .insight-card.negative{border-left:4px solid #c0392b}
+  .insight-card.neutral{border-left:4px solid #2980b9}
+  .insight-icon-lg{font-size:2rem;flex-shrink:0;margin-top:.1rem}
+  .insight-type-chip{font-size:.72rem;padding:.2rem .65rem;border-radius:999px;font-weight:700;display:inline-block;margin-bottom:.4rem}
+  .chip-trend{background:#d6eaf8;color:#1a5276}
+  .chip-opportunity{background:#d5f5e3;color:#1e8449}
+  .chip-risk{background:#fadbd8;color:#922b21}
+  .impact-bar{height:6px;border-radius:999px;background:var(--bg);margin-top:.6rem}
+  .stats-banner{background:linear-gradient(135deg,rgba(21,95,160,.1),rgba(39,174,96,.06));border:1px solid rgba(21,95,160,.18);border-radius:20px;padding:1.2rem 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;text-align:center}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>✦ AI Logistics Insights</h1>
+      <p class="topbar-copy">FreightFlow AI analyses your booking history, spend patterns, and supplier performance to surface actionable intelligence.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.health_score') }}" class="ghost-button">📊 Health Score</a>
+      <a href="{{ url_for('shipper.opportunities') }}" class="primary-button">💡 Opportunities</a>
+    </div>
+  </div>
+
+  <!-- Stats banner -->
+  <div class="stats-banner">
+    <div>
+      <p class="eyebrow" style="margin-bottom:.3rem">Spend change</p>
+      <strong style="font-size:1.6rem;color:{% if pct_change > 0 %}#c0392b{% else %}#27ae60{% endif %}">
+        {% if pct_change > 0 %}▲{% else %}▼{% endif %} {{ pct_change | abs }}%
+      </strong>
+      <p class="small-note">Month-on-month</p>
+    </div>
+    <div>
+      <p class="eyebrow" style="margin-bottom:.3rem">Insights generated</p>
+      <strong style="font-size:1.6rem;color:var(--accent-dark)">{{ insights | length }}</strong>
+      <p class="small-note">This analysis</p>
+    </div>
+    <div>
+      <p class="eyebrow" style="margin-bottom:.3rem">Savings identified</p>
+      <strong style="font-size:1.6rem;color:#27ae60">R 28 800</strong>
+      <p class="small-note">Annual opportunity</p>
+    </div>
+    <div>
+      <p class="eyebrow" style="margin-bottom:.3rem">Last updated</p>
+      <strong style="font-size:1rem;color:var(--accent-dark)">Today 06:00</strong>
+      <p class="small-note">Auto-refreshes daily</p>
+    </div>
+  </div>
+
+  <!-- Insights list -->
+  <div>
+    <h2 style="margin-bottom:1rem">Your insights</h2>
+    <div class="stack" style="gap:.8rem">
+      {% for ins in insights %}
+      <div class="insight-card {{ ins.impact }}">
+        <span class="insight-icon-lg">{{ ins.icon }}</span>
+        <div style="flex:1">
+          <span class="insight-type-chip chip-{{ ins.type }}">{{ ins.type | title }}</span>
+          <h3 style="margin:0 0 .35rem;font-size:1.05rem">{{ ins.title }}</h3>
+          <p style="color:var(--muted);margin:0;font-size:.93rem">{{ ins.detail }}</p>
+          {% if ins.impact == "positive" %}
+          <div class="impact-bar"><div style="width:80%;height:6px;border-radius:999px;background:#27ae60"></div></div>
+          {% elif ins.impact == "negative" %}
+          <div class="impact-bar"><div style="width:65%;height:6px;border-radius:999px;background:#c0392b"></div></div>
+          {% endif %}
+        </div>
+        <div style="flex-shrink:0">
+          {% if ins.impact == "positive" %}
+          <span style="color:#27ae60;font-size:1.2rem">↑</span>
+          {% elif ins.impact == "negative" %}
+          <span style="color:#c0392b;font-size:1.2rem">↓</span>
+          {% else %}
+          <span style="color:#2980b9;font-size:1.2rem">→</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+    <a href="{{ url_for('shipper.health_score') }}" class="stat-card" style="text-decoration:none;cursor:pointer">
+      <p class="stat-label">📊 Health Score</p>
+      <strong>87 / 100</strong>
+      <p class="small-note">View your logistics score</p>
+    </a>
+    <a href="{{ url_for('shipper.opportunities') }}" class="stat-card" style="text-decoration:none;cursor:pointer">
+      <p class="stat-label">💡 Opportunities</p>
+      <strong>3 found</strong>
+      <p class="small-note">R28,800 in savings</p>
+    </a>
+    <a href="{{ url_for('shipper.risk') }}" class="stat-card" style="text-decoration:none;cursor:pointer">
+      <p class="stat-label">⚠️ Risk Tracker</p>
+      <strong>1 High Risk</strong>
+      <p class="small-note">Active booking risk</p>
+    </a>
+    <a href="{{ url_for('shipper.ai_assistant') }}" class="stat-card" style="text-decoration:none;cursor:pointer">
+      <p class="stat-label">🤖 AI Assistant</p>
+      <strong>Ask anything</strong>
+      <p class="small-note">Chat with FreightFlow AI</p>
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>Reports &amp; disputes</h1>
+      <p class="topbar-copy">Report a cargo issue, missing goods, or damage. Our customer support team responds within 2 hours. You will never contact the supplier or driver directly — all communication goes through FreightFlow.</p>
+    </div>
+    <a href="{{ '#' }}" class="primary-button" style="align-self:flex-start;white-space:nowrap">+ New report</a>
+  </div>
+
+  <div style="background:rgba(21,95,160,.07);border:1px solid rgba(21,95,160,.18);border-radius:18px;padding:1rem 1.2rem;display:flex;gap:.9rem;align-items:flex-start">
+    <span style="font-size:1.4rem">🛡️</span>
+    <div>
+      <strong>How FreightFlow protects you</strong>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.88rem">All disputes are handled by our dedicated support team. You do not have direct access to supplier or driver contact details. FreightFlow acts as the intermediary and escalates to the supplier on your behalf. Critical issues are escalated to the on-call team within 15 minutes.</p>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterReports('all',this)">All ({{ reports|length }})</button>
+    <button class="nav-chip" onclick="filterReports('Open',this)">Open</button>
+    <button class="nav-chip" onclick="filterReports('In Progress',this)">In Progress</button>
+    <button class="nav-chip" onclick="filterReports('Resolved',this)">Resolved</button>
+  </div>
+
+  <div class="table-like" id="reports-list">
+    {% for r in reports %}
+    <div class="table-row report-item" data-status="{{ r.status }}" style="flex-wrap:wrap;gap:.8rem">
+      <div style="flex:1;min-width:160px">
+        <strong>{{ r.id }}</strong>
+        <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Booking: {{ r.bookingRef }}</p>
+        <p style="font-size:.8rem;margin:.2rem 0 0;color:var(--accent)">{{ r.category }}</p>
+      </div>
+      <div style="flex:2;min-width:200px">
+        <p style="margin:0;font-size:.9rem">{{ r.description[:80] }}{% if r.description|length > 80 %}…{% endif %}</p>
+        <p class="muted" style="font-size:.78rem;margin:.3rem 0 0">Opened: {{ r.createdAt }}</p>
+        {% if r.lastUpdate %}
+        <p style="font-size:.78rem;color:var(--green);margin:.1rem 0 0">Last update: {{ r.lastUpdate }}</p>
+        {% endif %}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+        <span class="pill {% if r.status=='Resolved' %}badge{% elif r.status=='In Progress' %}{% endif %}"
+          style="{% if r.status=='In Progress' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+          {{ r.status }}
+        </span>
+        {% if r.priority == 'Critical' %}
+        <span style="font-size:.72rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.2rem .6rem;border-radius:999px">🔴 Critical</span>
+        {% endif %}
+        <a href="{{ '#' }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.82rem">View thread →</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-card" style="padding:2rem;text-align:center">
+      <p style="font-size:1.5rem">✅</p>
+      <p class="muted">No reports yet. If you experience a cargo issue, click "New report" above.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterReports(status, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.report-item').forEach(r => {
+    r.style.display = (status === 'all' || r.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join FreightFlow Nexus — Supplier Onboarding</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--accent:#155fa0;--accent-dark:#0e3a6b;--text:#1a1a2e;--muted:#6b7280;--line:#e5e7eb;--bg:#f8f9fc;--paper:#fff}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .wizard-wrap{max-width:680px;margin:0 auto;padding:2rem 1rem}
+  .wizard-header{text-align:center;margin-bottom:2rem}
+  .logo{font-size:1.3rem;font-weight:800;color:var(--accent-dark);letter-spacing:-.02em;margin-bottom:.2rem}
+  .step-progress{display:flex;align-items:center;gap:0;margin:1.5rem 0}
+  .step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;transition:all .3s;border:2px solid var(--line);background:#fff;color:var(--muted)}
+  .step-dot.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step-dot.done{background:#27ae60;border-color:#27ae60;color:#fff}
+  .step-line{flex:1;height:2px;background:var(--line)}
+  .step-line.done{background:#27ae60}
+  .wizard-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:2rem;box-shadow:0 2px 20px rgba(0,0,0,.06)}
+  .step-panel{display:none}
+  .step-panel.active{display:block}
+  .step-title{font-size:1.3rem;font-weight:700;margin-bottom:.3rem}
+  .step-sub{color:var(--muted);font-size:.9rem;margin-bottom:1.5rem}
+  .form-group{margin-bottom:1rem}
+  label{font-size:.82rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.04em}
+  input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;font-size:.93rem;background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;font-family:inherit}
+  input:focus,select:focus{border-color:var(--accent)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+  .btn-row{display:flex;gap:.7rem;margin-top:1.5rem;justify-content:flex-end}
+  .btn-primary{background:var(--accent);color:#fff;border:none;border-radius:999px;padding:.7rem 1.8rem;font-size:.93rem;font-weight:600;cursor:pointer;transition:transform .15s}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);border-radius:999px;padding:.7rem 1.4rem;font-size:.93rem;color:var(--text);cursor:pointer;transition:border-color .2s}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .upload-box{border:2px dashed var(--line);border-radius:14px;padding:1.5rem;text-align:center;cursor:pointer;transition:border-color .2s}
+  .upload-box:hover{border-color:var(--accent);background:rgba(21,95,160,.03)}
+  .upload-icon{font-size:2rem;margin-bottom:.4rem}
+  .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem}
+  .review-item{background:var(--bg);border-radius:10px;padding:.7rem .9rem}
+  .review-item .rlabel{font-size:.75rem;color:var(--muted);font-weight:600;margin-bottom:.1rem}
+  .review-item .rval{font-weight:600;font-size:.92rem}
+  .check-item{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
+  .check-item:last-child{border-bottom:none}
+  .check-item span:first-child{font-size:1.1rem}
+  @media(max-width:520px){.form-row,.review-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wizard-wrap">
+  <div class="wizard-header">
+    <div class="logo">FreightFlow Nexus</div>
+    <p style="color:var(--muted);font-size:.9rem">Join South Africa's leading AI-powered freight marketplace</p>
+  </div>
+
+  <!-- Step progress -->
+  <div class="step-progress">
+    <div class="step-dot active" id="dot-1">1</div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-dot" id="dot-2">2</div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-dot" id="dot-3">3</div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step-dot" id="dot-4">4</div>
+    <div class="step-line" id="line-4"></div>
+    <div class="step-dot" id="dot-5">5</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:1.2rem">
+    <span>Company</span><span>Fleet</span><span>Banking</span><span>Documents</span><span>Review</span>
+  </div>
+
+  <div class="wizard-card">
+    <!-- Step 1: Company Information -->
+    <div class="step-panel active" id="step-1">
+      <div class="step-title">Step 1 — Company information</div>
+      <p class="step-sub">Tell us about your transport business. All fields are required for compliance.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Company / trading name</label>
+          <input type="text" placeholder="e.g. Kopano Linehaul (Pty) Ltd">
+        </div>
+        <div class="form-group">
+          <label>Registration number</label>
+          <input type="text" placeholder="2018/123456/07">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact person</label>
+          <input type="text" placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label>Contact number</label>
+          <input type="tel" placeholder="+27 82 000 0000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Business email</label>
+        <input type="email" placeholder="admin@yourcompany.co.za">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Operating region</label>
+          <select>
+            <option>KwaZulu-Natal / Gauteng</option>
+            <option>Western Cape</option>
+            <option>Eastern Cape</option>
+            <option>Gauteng / Limpopo</option>
+            <option>National</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Base city</label>
+          <select>
+            <option>Durban</option><option>Johannesburg</option><option>Cape Town</option>
+            <option>Pretoria</option><option>Gqeberha</option><option>Bloemfontein</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row"><button class="btn-primary" onclick="next(1)">Next — Fleet details →</button></div>
+    </div>
+
+    <!-- Step 2: Fleet Details -->
+    <div class="step-panel" id="step-2">
+      <div class="step-title">Step 2 — Fleet details</div>
+      <p class="step-sub">Tell us about your fleet. You can add more vehicles after registration.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Number of vehicles</label>
+          <input type="number" min="1" placeholder="e.g. 5">
+        </div>
+        <div class="form-group">
+          <label>Primary vehicle type</label>
+          <select>
+            <option>Superlink (34-Ton)</option><option>Horse & Trailer (22-Ton)</option>
+            <option>8-Ton Rigid</option><option>Curtainsider (8-Ton)</option>
+            <option>Flat-Deck / Lowbed</option><option>Reefer / Refrigerated</option>
+            <option>Bakkie / LDV</option><option>Mixed fleet</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First vehicle registration</label>
+          <input type="text" placeholder="e.g. ND 482-991">
+        </div>
+        <div class="form-group">
+          <label>Roadworthy expiry</label>
+          <input type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cargo types handled</label>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem">
+          {% for t in ['General freight','Pallets','Steel / heavy','Perishables','Hazardous','Automotive','FMCG','Construction'] %}
+          <label style="display:inline-flex;align-items:center;gap:.3rem;font-size:.85rem;text-transform:none;letter-spacing:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.3rem .7rem;cursor:pointer">
+            <input type="checkbox" style="width:auto"> {{ t }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="back(2)">← Back</button>
+        <button class="btn-primary" onclick="next(2)">Next — Banking →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Banking Information -->
+    <div class="step-panel" id="step-3">
+      <div class="step-title">Step 3 — Banking information</div>
+      <p class="step-sub">FreightFlow pays suppliers directly into your business account. All information is encrypted and securely stored.</p>
+      <div class="form-group">
+        <label>Account holder name</label>
+        <input type="text" placeholder="Must match registered company name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bank</label>
+          <select>
+            <option>First National Bank (FNB)</option><option>Standard Bank</option>
+            <option>Absa</option><option>Nedbank</option><option>Capitec Business</option>
+            <option>African Bank</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Branch code</label>
+          <input type="text" placeholder="e.g. 250655">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Account number</label>
+          <input type="text" placeholder="Account number">
+        </div>
+        <div class="form-group">
+          <label>Account type</label>
+          <select><option>Current / Cheque</option><option>Savings</option></select>
+        </div>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.8rem 1rem;font-size:.85rem;color:#166534;margin-top:.5rem">
+        🔒 Banking details are encrypted with 256-bit AES. FreightFlow uses verified EFT payments only.
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="back(3)">← Back</button>
+        <button class="btn-primary" onclick="next(3)">Next — Documents →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Documents -->
+    <div class="step-panel" id="step-4">
+      <div class="step-title">Step 4 — Compliance documents</div>
+      <p class="step-sub">Upload your required documents for verification. Accepted formats: PDF, JPG, PNG (max 10MB each).</p>
+      <div class="form-group">
+        <label>Insurance certificate (Required)</label>
+        <div class="upload-box" onclick="alert('File picker would open here')">
+          <div class="upload-icon">📄</div>
+          <strong>Click to upload</strong>
+          <p class="small-note">PDF, JPG or PNG · Max 10MB</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Roadworthy certificate (Required)</label>
+        <div class="upload-box" onclick="alert('File picker would open here')">
+          <div class="upload-icon">🚛</div>
+          <strong>Click to upload</strong>
+          <p class="small-note">PDF, JPG or PNG · Max 10MB</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Operator permit (Required)</label>
+        <div class="upload-box" onclick="alert('File picker would open here')">
+          <div class="upload-icon">📋</div>
+          <strong>Click to upload</strong>
+          <p class="small-note">PDF, JPG or PNG · Max 10MB</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>CIPC company registration (Optional but recommended)</label>
+        <div class="upload-box" onclick="alert('File picker would open here')">
+          <div class="upload-icon">🏢</div>
+          <strong>Click to upload</strong>
+          <p class="small-note">PDF, JPG or PNG · Max 10MB</p>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="back(4)">← Back</button>
+        <button class="btn-primary" onclick="next(4)">Next — Review →</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Review & Submit -->
+    <div class="step-panel" id="step-5">
+      <div class="step-title">Step 5 — Review & submit</div>
+      <p class="step-sub">Please review your application before submitting. Our compliance team will verify your documents within 2–3 business days.</p>
+      <h4 style="margin-bottom:.6rem;color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em">Company details</h4>
+      <div class="review-grid">
+        <div class="review-item"><div class="rlabel">Company name</div><div class="rval">Your Company (Pty) Ltd</div></div>
+        <div class="review-item"><div class="rlabel">Registration</div><div class="rval">2024/000000/07</div></div>
+        <div class="review-item"><div class="rlabel">Region</div><div class="rval">KwaZulu-Natal / Gauteng</div></div>
+        <div class="review-item"><div class="rlabel">Base city</div><div class="rval">Durban</div></div>
+      </div>
+      <h4 style="margin:.8rem 0 .6rem;color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em">Documents</h4>
+      <div>
+        <div class="check-item"><span>✅</span><span>Insurance certificate uploaded</span></div>
+        <div class="check-item"><span>✅</span><span>Roadworthy certificate uploaded</span></div>
+        <div class="check-item"><span>✅</span><span>Operator permit uploaded</span></div>
+        <div class="check-item"><span>⏳</span><span style="color:var(--muted)">CIPC registration — not uploaded (optional)</span></div>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:1rem;margin-top:1rem">
+        <strong style="color:#166534">What happens next?</strong>
+        <p style="color:#15803d;font-size:.88rem;margin:.3rem 0 0">1. FreightFlow compliance reviews your documents (2–3 business days)<br>2. You'll receive an email with login credentials<br>3. Your profile goes live and you'll start receiving booking offers</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="back(5)">← Back</button>
+        <form action="/onboarding/submit" method="POST" style="display:inline">
+          <button type="submit" class="btn-primary">🚀 Submit application</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let current = 1;
+function next(step) {
+  document.getElementById('step-' + step).classList.remove('active');
+  document.getElementById('dot-' + step).classList.remove('active');
+  document.getElementById('dot-' + step).classList.add('done');
+  document.getElementById('dot-' + step).textContent = '✓';
+  if (step < 5) document.getElementById('line-' + step).classList.add('done');
+  current = step + 1;
+  document.getElementById('step-' + current).classList.add('active');
+  document.getElementById('dot-' + current).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function back(step) {
+  document.getElementById('step-' + step).classList.remove('active');
+  document.getElementById('dot-' + (step-1)).classList.remove('done','active');
+  document.getElementById('dot-' + (step-1)).classList.add('active');
+  document.getElementById('dot-' + (step-1)).textContent = step - 1;
+  if (step > 1) document.getElementById('line-' + (step-1)).classList.remove('done');
+  current = step - 1;
+  document.getElementById('step-' + current).classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>

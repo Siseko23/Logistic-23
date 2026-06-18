@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Shipping agents</p>
+      <h1>Shipping agents</h1>
+      <p class="topbar-copy">Manage registered shipping agent companies. Agents offer containers, pallets, and boxes for coordinated shipments. Approve, suspend, or review their available units.</p>
+    </div>
+    <a href="{{ '#' }}" class="primary-button" style="align-self:flex-start;margin-top:.5rem;text-decoration:none">+ Add agent</a>
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterA('all',this)">All ({{ agents|length }})</button>
+    <button class="nav-chip" onclick="filterA('Active',this)">Active</button>
+    <button class="nav-chip" onclick="filterA('Pending approval',this)">Pending approval</button>
+    <button class="nav-chip" onclick="filterA('Suspended',this)">Suspended</button>
+  </div>
+
+  <!-- Summary cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem">
+    {% set active_count = agents | selectattr('status','eq','Active') | list | length %}
+    {% set pending_count = agents | selectattr('status','eq','Pending approval') | list | length %}
+    {% set container_total = namespace(v=0) %}
+    {% set pallet_total = namespace(v=0) %}
+    {% for a in agents %}
+      {% for c in a.containers %}{% set container_total.v = container_total.v + c.available %}{% endfor %}
+      {% for u in a.units %}{% if 'Pallet' in u.type %}{% set pallet_total.v = pallet_total.v + u.available %}{% endif %}{% endfor %}
+    {% endfor %}
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p style="font-size:1.8rem;font-weight:800;margin:0;color:var(--accent-dark)">{{ active_count }}</p>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.82rem">Active agents</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p style="font-size:1.8rem;font-weight:800;margin:0;color:#9b1c1c">{{ pending_count }}</p>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.82rem">Awaiting approval</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p style="font-size:1.8rem;font-weight:800;margin:0;color:var(--accent-dark)">{{ container_total.v }}</p>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.82rem">Containers available</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p style="font-size:1.8rem;font-weight:800;margin:0;color:var(--accent-dark)">{{ pallet_total.v }}</p>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.82rem">Pallets available</p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="agent-list">
+      {% for a in agents %}
+      <a href="{{ '#' }}"
+         class="table-row agent-item"
+         data-status="{{ a.status }}"
+         style="text-decoration:none;color:inherit;flex-wrap:wrap;gap:.8rem;
+           {% if a.status=='Pending approval' %}background:rgba(255,200,0,.06);border-left:3px solid #f0b429{% endif %}">
+
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:2.8rem;height:2.8rem;border-radius:12px;
+          background:{% if a.status=='Active' %}rgba(47,108,87,.12){% elif a.status=='Pending approval' %}rgba(255,200,0,.18){% else %}rgba(0,0,0,.07){% endif %};font-size:1.3rem">
+          🚢
+        </div>
+
+        <div style="flex:1;min-width:200px">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <strong>{{ a.company }}</strong>
+            {% if a.status == 'Pending approval' %}
+            <span style="font-size:.7rem;background:rgba(255,200,0,.2);color:#7a5800;padding:.15rem .5rem;border-radius:999px;font-weight:700">NEEDS APPROVAL</span>
+            {% endif %}
+          </div>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ a.contactName }} &middot; {{ a.city }}</p>
+          <p style="font-size:.8rem;margin:.2rem 0 0;color:var(--muted)">
+            {% for s in a.services %}<span style="background:rgba(47,108,87,.08);color:var(--accent-dark);border-radius:6px;padding:.1rem .45rem;font-size:.74rem;margin-right:.3rem">{{ s }}</span>{% endfor %}
+          </p>
+        </div>
+
+        <div style="text-align:right;min-width:180px;flex-shrink:0;font-size:.82rem">
+          <p style="margin:0"><strong>{{ a.containers|length }}</strong> container types &middot; <strong>{{ a.units|length }}</strong> unit types</p>
+          {% set total_cont = namespace(v=0) %}{% for c in a.containers %}{% set total_cont.v = total_cont.v + c.available %}{% endfor %}
+          <p class="muted" style="margin:.2rem 0 0">{{ total_cont.v }} containers in stock</p>
+          <p class="muted" style="margin:.15rem 0 0">Registered {{ a.registeredAt }}</p>
+        </div>
+
+        <div style="flex-shrink:0">
+          <span class="pill {% if a.status=='Active' %}badge{% endif %}"
+            style="{% if a.status=='Pending approval' %}background:rgba(255,200,0,.2);color:#7a5800{% elif a.status=='Suspended' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+            {{ a.status }}
+          </span>
+        </div>
+      </a>
+      {% else %}
+      <div class="empty-card" style="padding:2.5rem;text-align:center">
+        <p style="font-size:2rem;margin:0">🚢</p>
+        <p class="muted" style="margin:.6rem 0 0">No shipping agents registered yet.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterA(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.agent-item').forEach(r => {
+    r.style.display = (val === 'all' || r.dataset.status === val) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Bookings</h1>
+      <p class="topbar-copy">Accept or reject pending bookings. Auto-reassignment triggers when the response window expires.</p>
+    </div>
+    {% if pending %}
+    <div style="align-self:flex-start;margin-top:.5rem">
+      <span style="padding:.5rem 1.1rem;border-radius:999px;background:rgba(155,28,28,.12);color:#9b1c1c;font-size:.85rem;font-weight:600">
+        ⏳ {{ pending|length }} booking{{ 's' if pending|length > 1 }} awaiting action
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if pending %}
+  <section class="panel" style="border:2px solid rgba(155,28,28,.25);background:rgba(155,28,28,.02)">
+    <div class="panel-head">
+      <h2>🔔 New bookings — action required</h2>
+      <p style="color:#9b1c1c;font-weight:600">Respond before the window expires to avoid auto-reassignment</p>
+    </div>
+    <div class="stack" style="gap:1rem">
+      {% for b in pending %}
+      <div style="border:1px solid rgba(155,28,28,.2);border-radius:14px;overflow:hidden;background:var(--surface)">
+        <!-- Booking header -->
+        <div style="padding:1rem 1.2rem;background:rgba(155,28,28,.04);border-bottom:1px solid rgba(155,28,28,.15);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+              <strong style="font-size:1rem">{{ b.ref }}</strong>
+              <span class="pill" style="background:rgba(155,28,28,.1);color:#9b1c1c">Pending action</span>
+            </div>
+            <p style="margin:.3rem 0 0;font-size:.9rem;font-weight:600">{{ b.route }}</p>
+            <p class="muted" style="font-size:.8rem;margin:.15rem 0 0">Shipper: {{ b.shipper }} &middot; Response window: {{ b.supplierResponseWindow }}</p>
+          </div>
+          <div style="text-align:right">
+            <p class="muted" style="font-size:.75rem;margin:0">Your rate</p>
+            <strong style="font-size:1.2rem;color:var(--accent-dark)">{{ zar(b.value) }}</strong>
+          </div>
+        </div>
+
+        <!-- Booking details grid -->
+        <div style="padding:1rem 1.2rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem 1.2rem">
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Collection address</p>
+            <p style="font-size:.85rem;margin:0">{{ b.collectionAddress }}</p>
+            <p style="font-size:.8rem;color:var(--muted);margin:.1rem 0 0">Contact: {{ b.collectionContact }} · {{ b.collectionPhone }}</p>
+          </div>
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Delivery address</p>
+            <p style="font-size:.85rem;margin:0">{{ b.deliveryAddress }}</p>
+            <p style="font-size:.8rem;color:var(--muted);margin:.1rem 0 0">Contact: {{ b.deliveryContact }} · {{ b.deliveryPhone }}</p>
+          </div>
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Load</p>
+            <p style="font-size:.85rem;margin:0">{{ b.pieces }} {{ b.unitType }}</p>
+            <p style="font-size:.8rem;color:var(--muted);margin:.1rem 0 0">{{ b.commodity }}</p>
+          </div>
+          {% if b.collectedAt or b.dcSlotDate %}
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Collection date</p>
+            <p style="font-size:.85rem;margin:0">{{ b.collectedAt or b.dcSlotDate }}</p>
+          </div>
+          {% endif %}
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Destination type</p>
+            <p style="font-size:.85rem;margin:0">{{ b.destinationType }}</p>
+            {% if b.dcBookingRef %}<p style="font-size:.8rem;color:var(--muted);margin:.1rem 0 0">DC ref: {{ b.dcBookingRef }}</p>{% endif %}
+          </div>
+          <div>
+            <p class="muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Booking created</p>
+            <p style="font-size:.85rem;margin:0">{{ b.createdAt }}</p>
+          </div>
+        </div>
+
+        <!-- Accept / Reject actions -->
+        <div style="padding:1rem 1.2rem;border-top:1px solid var(--line);display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+          <!-- Accept form with driver assignment -->
+          <form method="POST" action="{{ '#' }}" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;flex:1;min-width:220px">
+            {% if drivers %}
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Assign driver (optional)</label>
+              <select name="driverId" style="width:100%;padding:.45rem .7rem;border:1px solid var(--line);border-radius:8px;font-size:.85rem;background:var(--surface)">
+                <option value="">— Assign later —</option>
+                {% for d in drivers %}
+                <option value="{{ d.id }}">{{ d.name }} · {{ d.vehicleType }} · {{ d.vehicleReg }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="primary-button" style="white-space:nowrap">✅ Accept booking</button>
+          </form>
+          <!-- Reject form -->
+          <form method="POST" action="{{ '#' }}" style="margin:0"
+            onsubmit="return confirm('Reject booking {{ b.ref }}? The next available supplier will be notified.')">
+            <button type="submit" class="ghost-button" style="color:#c0392b;border-color:rgba(192,57,43,.3)">✕ Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="panel-head"><h2>Booking history</h2></div>
+    <div class="toggle-row">
+      {% for s in ['All','Confirmed','In Transit','Delivered','Rejected'] %}
+      <button class="nav-chip {% if loop.first %}active{% endif %}" onclick="filterBookings('{{ s }}',this)">{{ s }}</button>
+      {% endfor %}
+    </div>
+    <div class="table-like" id="booking-table">
+      {% for b in bookings %}
+      {% if b.status != 'Pending Supplier Acceptance' %}
+      <div class="table-row" data-status="{{ b.status }}">
+        <div>
+          <strong>{{ b.ref }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+        </div>
+        <div>
+          <p>{{ b.shipper }}</p>
+          <p class="muted" style="font-size:.82rem">{{ b.commodity }} · {{ b.pieces }} {{ b.unitType }}</p>
+        </div>
+        <div>
+          <p style="font-weight:600">{{ zar(b.value) }}</p>
+          {% if b.driverName %}<p class="muted" style="font-size:.8rem">{{ b.driverName }}</p>{% endif %}
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span class="pill {% if b.status in ('Confirmed','Delivered') %}badge{% endif %}"
+            style="{% if b.status=='Rejected' %}background:rgba(192,57,43,.1);color:#c0392b{% endif %}">
+            {{ b.status }}
+          </span>
+          {% if b.waybillGenerated %}
+          <a href="{{ '#' }}" target="_blank"
+             class="ghost-button" style="padding:.3rem .65rem;font-size:.74rem" title="Download waybill">📄 Waybill</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="empty-card">No booking history yet.</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+function filterBookings(status,btn){
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#booking-table .table-row').forEach(r=>{
+    r.style.display=(status==='All'||r.dataset.status===status)?'flex':'none';
+  });
+}
+</script>{% endblock %}

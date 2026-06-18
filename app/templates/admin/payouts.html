@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Admin portal</p><h1>Supplier payouts</h1><p class="topbar-copy">Review completed bookings, calculate net amounts after platform commission, and release payments to suppliers.</p></div></div>
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <p class="stat-label">Total due this month</p>
+      <strong>{{ zar(summary.total_due) }}</strong>
+      <p class="muted">Across {{ summary.supplier_count }} suppliers</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Platform commission collected</p>
+      <strong style="color:var(--green)">{{ zar(summary.total_commission) }}</strong>
+      <p class="muted">{{ platform_fee_pct }}% on completed bookings</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Already paid out</p>
+      <strong>{{ zar(summary.total_paid) }}</strong>
+      <p class="muted">This month</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Pending release</p>
+      <strong style="color:var(--accent)">{{ zar(summary.total_pending) }}</strong>
+      <p class="muted">Awaiting your approval</p>
+    </article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><h2>Payout queue</h2><p>Completed bookings pending payment. Click "Make payment" to release funds to supplier's registered bank account.</p></div>
+      <a href="{{ '#' }}?month={{ current_month }}" class="ghost-button" style="white-space:nowrap">⬇ Download Excel</a>
+    </div>
+
+    {% for sup in payout_suppliers %}
+    <div style="margin-bottom:1.5rem;border:1px solid var(--line);border-radius:18px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.2rem;background:rgba(244,249,255,.8);border-bottom:1px solid var(--line)">
+        <div>
+          <strong style="font-size:1rem">{{ sup.name }}</strong>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ sup.baseCity }} · {{ sup.completed_bookings }} completed bookings</p>
+          {% if sup.banking %}
+          <p style="font-size:.78rem;color:var(--green);margin:.2rem 0 0">✓ {{ sup.banking.bank }} ···{{ sup.banking.accountNumber[-4:] }}</p>
+          {% else %}
+          <p style="font-size:.78rem;color:#c0392b;margin:.2rem 0 0">⚠ No bank details on file</p>
+          {% endif %}
+        </div>
+        <div style="text-align:right">
+          <p style="margin:0;font-size:.85rem;color:var(--muted)">Gross: {{ zar(sup.gross) }}</p>
+          <p style="margin:.1rem 0;font-size:.82rem;color:#c0392b">Commission: - {{ zar(sup.commission) }}</p>
+          <p style="margin:.1rem 0;font-size:1.1rem;font-weight:700;color:var(--accent)">Net due: {{ zar(sup.net_due) }}</p>
+          <form method="POST" action="{{ '#' }}" style="margin-top:.5rem">
+            <button type="submit" class="primary-button" style="font-size:.85rem;padding:.5rem 1.1rem" {% if not sup.banking or sup.net_due<=0 %}disabled{% endif %}>
+              Make payment →
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="table-like" style="padding:.5rem .7rem;gap:.4rem">
+        {% for b in sup.bookings %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.5rem;padding:.7rem .9rem">
+          <div style="flex:1;min-width:140px">
+            <strong style="font-size:.88rem">{{ b.ref }}</strong>
+            <p class="muted" style="font-size:.78rem;margin:.1rem 0 0">{{ b.route }}</p>
+          </div>
+          <div style="flex:1">
+            <p style="font-size:.85rem;margin:0">{{ b.shipper }}</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:.1rem 0 0">{{ b.deliveredAt or b.createdAt }}</p>
+          </div>
+          <div style="text-align:right">
+            <p style="font-size:.85rem;margin:0">{{ zar(b.value) }}</p>
+            <p style="font-size:.75rem;color:#c0392b;margin:.1rem 0 0">- {{ zar(b.value * platform_fee_pct / 100) }}</p>
+            <p style="font-size:.85rem;font-weight:600;color:var(--green);margin:.1rem 0 0">{{ zar(b.value * (1 - platform_fee_pct/100)) }}</p>
+          </div>
+          <span class="pill {% if b.payout_status=='Paid' %}badge{% endif %}" style="align-self:center;font-size:.72rem">{{ b.payout_status or 'Pending' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-card" style="padding:2rem;text-align:center">
+      <p class="muted">No completed bookings awaiting payout this period.</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Payment history</h2></div>
+    <div class="table-like">
+      {% for p in payment_history %}
+      <div class="table-row">
+        <div>
+          <strong>{{ p.supplier }}</strong>
+          <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">{{ p.date }}</p>
+        </div>
+        <div>
+          <p>{{ p.bookings_count }} bookings</p>
+          <p class="muted" style="font-size:.82rem">{{ p.bank }}</p>
+        </div>
+        <strong style="color:var(--green)">{{ zar(p.amount) }}</strong>
+        <span class="badge">Paid</span>
+      </div>
+      {% else %}
+      <p class="muted" style="text-align:center;padding:.8rem">No payment history yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

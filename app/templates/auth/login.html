@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log in — FreightFlow Nexus</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#155fa0;--accent-dark:#0e3a6b;--line:#e5e7eb;--bg:#f8f9fc;--paper:#fff;--text:#1a1a2e;--muted:#6b7280;--error:#c0392b}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.auth-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.07)}
+.brand{text-align:center;margin-bottom:2rem}
+.brand-logo{font-size:1.3rem;font-weight:800;color:var(--accent-dark);letter-spacing:-.02em}
+.brand-logo span{font-size:.65rem;font-weight:700;background:var(--accent);color:#fff;padding:.1rem .45rem;border-radius:5px;margin-left:.3rem;letter-spacing:.04em}
+h1{font-family:'IBM Plex Serif',serif;font-size:1.5rem;margin-bottom:.3rem;text-align:center}
+.sub{color:var(--muted);text-align:center;font-size:.88rem;margin-bottom:1.8rem}
+.form-group{margin-bottom:1rem}
+label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
+input,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:.65rem .9rem;font-size:.93rem;background:var(--bg);color:var(--text);outline:none;transition:border-color .2s;font-family:inherit}
+input:focus,select:focus{border-color:var(--accent);background:#fff}
+.btn{display:block;width:100%;padding:.75rem;border:none;border-radius:999px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.flash{padding:.6rem .9rem;border-radius:9px;font-size:.85rem;margin-bottom:1rem}
+.flash.error{background:#fadbd8;color:#922b21;border:1px solid #f1948a}
+.flash.success{background:#d5f5e3;color:#1e8449}
+.flash.info{background:#d6eaf8;color:#1a5276}
+.flash.warning{background:#fef9e7;color:#7d6608}
+.divider{text-align:center;color:var(--muted);font-size:.8rem;margin:1rem 0;position:relative}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--line)}
+.divider::before{left:0}.divider::after{right:0}
+.link{color:var(--accent);text-decoration:none;font-weight:600}
+.link:hover{text-decoration:underline}
+.remember-row{display:flex;align-items:center;justify-content:space-between;font-size:.83rem}
+.remember-row label{text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;display:flex;align-items:center;gap:.4rem;margin:0}
+.remember-row input[type=checkbox]{width:auto;height:15px}
+.demo-accounts{background:rgba(21,95,160,.05);border:1px solid rgba(21,95,160,.15);border-radius:12px;padding:.9rem 1rem;margin-top:1.2rem;font-size:.82rem}
+.demo-accounts strong{display:block;margin-bottom:.4rem;color:var(--accent-dark)}
+.demo-row{display:flex;justify-content:space-between;padding:.2rem 0;color:var(--muted)}
+.demo-row span:first-child{font-weight:600;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="auth-card">
+  <div class="brand">
+    <div class="brand-logo">FreightFlow <span>Nexus</span></div>
+  </div>
+  <h1>Welcome back</h1>
+  <p class="sub">Log in to your account to continue</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ '' }}">
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" name="email" placeholder="you@company.co.za" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Your password" required>
+    </div>
+    <div class="remember-row" style="margin-bottom:1.2rem">
+      <label><input type="checkbox" name="remember"> Remember me</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Log in →</button>
+  </form>
+
+  <div class="divider">or</div>
+  <a href="{{ url_for('auth.register') }}" class="btn" style="border:1px solid var(--line);color:var(--text);background:var(--bg)">Create a new account</a>
+  <p style="text-align:center;font-size:.8rem;color:var(--muted);margin-top:1rem">
+    Having trouble? <a href="mailto:support@movement.com" class="link">Contact support</a>
+  </p>
+
+  <div class="demo-accounts">
+    <strong>🧪 Demo credentials</strong>
+    <div class="demo-row"><span>Admin</span><span>admin@movement.com / admin1234</span></div>
+    <div class="demo-row"><span>Shipper</span><span>shipper1@movement.com / shipper123</span></div>
+    <div class="demo-row"><span>Supplier</span><span>supplier1@movement.com / supplier123</span></div>
+  </div>
+</div>
+</body>
+</html>

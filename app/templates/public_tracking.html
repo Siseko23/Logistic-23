@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Track shipment {{ booking.ref }} — FreightFlow Nexus</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root{--bg:#f5f9ff;--paper:rgba(255,255,255,.9);--line:rgba(22,61,109,.12);--text:#12253f;--muted:#5f7692;--accent:#155fa0;--accent-dark:#0f4676;--green:#2f6c57}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(21,95,160,.14),transparent 28%),linear-gradient(180deg,#f7fbff,#eaf3ff);color:var(--text)}
+    .shell{max-width:680px;margin:0 auto;padding:1.5rem 1rem 4rem}
+    .brand{display:flex;align-items:center;gap:.75rem;margin-bottom:2rem;text-decoration:none;color:var(--text)}
+    .brand-mark{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,var(--accent),#5f9dd5);color:#fff;font-weight:700}
+    .card{background:var(--paper);border:1px solid rgba(255,255,255,.6);border-radius:22px;padding:1.4rem;box-shadow:0 20px 50px rgba(18,37,63,.1);margin-bottom:1.2rem}
+    .live-badge{display:inline-flex;align-items:center;gap:.4rem;background:#16a34a;color:#fff;border-radius:999px;padding:.3rem .9rem;font-size:.78rem;font-weight:700}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .map-area{width:100%;height:300px;border-radius:16px;background:linear-gradient(135deg,#c7d2fe,#a5f3fc);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:1rem}
+    .truck{font-size:3rem;animation:truck-move 2s ease-in-out infinite alternate}
+    @keyframes truck-move{from{transform:translateX(-8px)}to{transform:translateX(8px)}}
+    .stat-pill{background:rgba(255,255,255,.9);border-radius:12px;padding:.4rem .9rem;font-size:.82rem;font-weight:600;border:1px solid var(--line)}
+    .timeline-step{display:flex;gap:.8rem;padding:.6rem 0}
+    .step-dot{width:15px;height:15px;border-radius:50%;flex-shrink:0;margin-top:.1rem;border:2px solid var(--line);background:#fff}
+    .step-dot.done{background:var(--accent);border-color:var(--accent)}
+    .step-dot.active{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px rgba(21,95,160,.2)}
+    .step-line{width:2px;background:var(--line);height:20px;margin-left:6px}
+    .step-line.done{background:var(--accent)}
+    .sum-row{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+    .sum-row:last-child{border-bottom:none}
+    .footer{text-align:center;margin-top:2rem;font-size:.8rem;color:var(--muted)}
+    h2{font-size:1.3rem;margin:0 0 .8rem}
+    p{margin:0}
+    .eyebrow{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-dark);margin-bottom:.3rem}
+    .share-btn{background:rgba(21,95,160,.1);border:1px solid rgba(21,95,160,.25);border-radius:12px;padding:.5rem 1rem;font-size:.84rem;color:var(--accent-dark);cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit}
+    .share-btn:hover{background:rgba(21,95,160,.18)}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <a href="/" class="brand">
+    <div class="brand-mark">FF</div>
+    <div>
+      <strong>FreightFlow Nexus</strong><br>
+      <span style="font-size:.78rem;color:var(--muted)">Shipment tracking</span>
+    </div>
+  </a>
+
+  <!-- Header card -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.75rem">
+      <div>
+        <p class="eyebrow">Tracking reference</p>
+        <h1 style="font-size:1.6rem;margin:.1rem 0 0;font-weight:700">{{ booking.ref }}</h1>
+        <p style="font-size:.9rem;color:var(--muted);margin:.3rem 0 0">{{ booking.route }}</p>
+      </div>
+      <span class="live-badge"><span class="live-dot"></span>LIVE TRACKING</span>
+    </div>
+
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem">
+      <span class="stat-pill" id="eta-pill">ETA: calculating…</span>
+      <span class="stat-pill" id="speed-pill">Speed: — km/h</span>
+      <span class="stat-pill" style="background:rgba(47,108,87,.1);color:var(--green)">
+        {{ booking.status }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div class="card" style="padding:1rem">
+    <div class="map-area">
+      <div style="text-align:center">
+        <div class="truck">🚛</div>
+        <p style="font-weight:700;margin:.4rem 0 .2rem" id="map-label">Tracking driver location…</p>
+        <p style="font-size:.82rem;color:var(--muted)" id="map-coords">Connecting to live feed</p>
+      </div>
+      <div style="position:absolute;bottom:.75rem;left:.75rem;display:flex;gap:.5rem">
+        <span class="stat-pill" style="font-size:.74rem">📍 GPS live</span>
+      </div>
+    </div>
+    <div id="location-log" style="font-family:monospace;font-size:.76rem;color:var(--muted);height:80px;overflow-y:auto;background:#f8fafc;border-radius:10px;padding:.5rem .7rem;line-height:1.7;margin-top:.75rem"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="card">
+    <h2>Delivery progress</h2>
+    {% set steps = [
+      ('Booking confirmed', booking.createdAt, booking.status in ['Confirmed','In Transit','Delivered'], False),
+      ('Cargo collected', booking.collectedAt, booking.status in ['In Transit','Delivered'], booking.status == 'In Transit'),
+      ('In transit', booking.collectedAt, booking.status in ['In Transit','Delivered'], False),
+      ('Delivered', booking.deliveredAt, booking.status == 'Delivered', False),
+    ] %}
+    {% for label, ts, done, active in steps %}
+    <div class="timeline-step">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="step-dot {% if done %}done{% elif active %}active{% endif %}"></div>
+        {% if not loop.last %}<div class="step-line {% if done %}done{% endif %}"></div>{% endif %}
+      </div>
+      <div style="padding-bottom:.4rem">
+        <strong style="font-size:.88rem;{% if active %}color:var(--accent){% endif %}">{{ label }}</strong>
+        {% if ts %}<p style="font-size:.78rem;color:var(--muted);margin:.1rem 0 0">{{ ts }}</p>{% endif %}
+        {% if active %}<p style="font-size:.75rem;color:var(--accent);margin:.1rem 0 0">● Currently here</p>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Shipment details -->
+  <div class="card">
+    <h2>Shipment details</h2>
+    <div class="sum-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+    <div class="sum-row"><span>Supplier</span><strong>{{ booking.supplier }}</strong></div>
+    <div class="sum-row"><span>Cargo</span><strong>{{ booking.pieces }} {{ booking.unitType }} · {{ booking.commodity }}</strong></div>
+    {% if booking.dcSlotDate %}
+    <div class="sum-row"><span>Expected delivery</span><strong>{{ booking.dcSlotDate }} at {{ booking.dcSlotTime }}</strong></div>
+    {% endif %}
+  </div>
+
+  <!-- Share -->
+  <div style="text-align:center;margin-bottom:1.5rem">
+    <button class="share-btn" onclick="shareLink()">🔗 Share this tracking link</button>
+    <p style="font-size:.78rem;color:var(--muted);margin:.5rem 0 0">No login required · Valid for the duration of this shipment</p>
+  </div>
+
+  <div class="footer">
+    <p>Powered by <strong>FreightFlow Nexus</strong> · South Africa's digital freight marketplace</p>
+    <p style="margin-top:.3rem">Questions? <a href="mailto:support@movement.com" style="color:var(--accent)">support@movement.com</a></p>
+  </div>
+</div>
+
+<script>
+const socket = io();
+const bookingRef = "{{ booking.ref }}";
+const log = document.getElementById('location-log');
+
+socket.on('connect', () => {
+  socket.emit('subscribe_tracking', { booking_ref: bookingRef });
+  appendLog('Connected to live tracking…', '#16a34a');
+});
+
+socket.on('location_update', data => {
+  if(data.booking_ref !== bookingRef) return;
+  document.getElementById('map-coords').textContent = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+  document.getElementById('map-label').textContent = '🚛 Driver is moving';
+  document.getElementById('speed-pill').textContent = `Speed: ${data.speed} km/h`;
+  document.getElementById('eta-pill').textContent = `ETA: ${data.eta || 'calculating…'}`;
+  appendLog(`[${data.timestamp}] ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)} · ${data.speed}km/h`, '#155FA0');
+});
+
+socket.on('qr_event', data => {
+  if(data.booking_ref !== bookingRef) return;
+  const msgs = { collect:'✅ Cargo collected — driver on the way', deliver:'📦 Delivery confirmed at destination' };
+  appendLog(msgs[data.event] || data.event, '#16a34a');
+});
+
+function appendLog(text, color){
+  log.innerHTML = `<span style="color:${color}">${text}</span>\n` + log.innerHTML;
+}
+
+function shareLink(){
+  const url = window.location.href;
+  if(navigator.share){
+    navigator.share({ title: 'Track shipment {{ booking.ref }}', url });
+  } else {
+    navigator.clipboard.writeText(url).then(() => alert('Link copied to clipboard!'));
+  }
+}
+</script>
+</body>
+</html>

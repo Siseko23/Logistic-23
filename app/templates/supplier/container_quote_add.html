@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · <a href="{{ url_for('supplier.quote_requests') }}" style="color:var(--accent);text-decoration:none">Container quotes</a> · New</p>
+      <h1>Submit container quote</h1>
+      <p class="topbar-copy">Set your rate per container for a specific route. FreightFlow adds 10% — you are always paid exactly what you quote here.</p>
+    </div>
+  </div>
+
+  <div style="max-width:620px">
+    <form method="POST" action="{{ '#' }}">
+      <section class="panel">
+        <div class="panel-head"><h2>Route &amp; container type</h2></div>
+        <div class="stack" style="gap:.9rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label class="field-label">Origin *</label>
+              <select name="origin" required style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+                <option value="">Select city</option>
+                {% for city in ['Durban','Cape Town','Johannesburg','Gqeberha','East London','Richards Bay','Pretoria'] %}
+                <option>{{ city }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Destination *</label>
+              <select name="destination" required style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+                <option value="">Select city</option>
+                {% for city in ['Johannesburg','Durban','Cape Town','Gqeberha','East London','Richards Bay','Pretoria','Polokwane'] %}
+                <option>{{ city }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Container type *</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem" id="ct-grid">
+              {% for ct, desc in [
+                ('20ft Standard','33 CBM · 21,500 kg SA'),
+                ('20ft Reefer','28 CBM · 16,000 kg · ❄'),
+                ('40ft Standard','67 CBM · 22,000 kg SA'),
+                ('40ft High Cube','76 CBM · 21,500 kg · HC'),
+              ] %}
+              <label style="display:flex;align-items:flex-start;gap:.5rem;padding:.6rem .8rem;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-size:.82rem;transition:all .15s" class="ct-opt">
+                <input type="radio" name="containerType" value="{{ ct }}" {% if loop.first %}checked{% endif %}
+                  onchange="highlightCT(this)" style="accent-color:var(--accent);margin-top:.15rem;flex-shrink:0">
+                <div><strong>{{ ct }}</strong><p style="margin:.1rem 0 0;color:var(--muted);font-size:.74rem">{{ desc }}</p></div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:.8rem">
+        <div class="panel-head"><h2>Your rate</h2></div>
+        <div class="stack" style="gap:.9rem">
+          <div>
+            <label class="field-label">Your rate per container (R) *</label>
+            <input type="number" name="ratePerContainer" id="rateInput" min="1000" step="500" required
+              placeholder="e.g. 20000"
+              oninput="calcPreview(this.value)"
+              style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:1.1rem;font-weight:700">
+            <p class="muted" style="font-size:.78rem;margin:.3rem 0 0">This is what you will be paid. Excludes port handling, demurrage, or customs unless stated in notes.</p>
+          </div>
+
+          <!-- Live price preview -->
+          <div id="price-preview" style="display:none;background:rgba(47,108,87,.05);border:1px solid rgba(47,108,87,.2);border-radius:14px;padding:1rem 1.2rem">
+            <p style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--accent-dark);margin:0 0 .6rem;letter-spacing:.05em">Price breakdown</p>
+            <div style="display:flex;justify-content:space-between;font-size:.88rem;padding:.25rem 0;border-bottom:1px solid rgba(47,108,87,.12)">
+              <span>Your quoted rate</span><strong id="prev-supplier" style="color:var(--accent-dark)">R 0</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.88rem;padding:.25rem 0;border-bottom:1px solid rgba(47,108,87,.12)">
+              <span class="muted">FreightFlow platform fee (10%)</span><strong id="prev-fee" style="color:#9b1c1c">+ R 0</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;padding:.35rem 0">
+              <span>Shipper sees</span><strong id="prev-shipper">R 0</strong>
+            </div>
+            <p class="muted" style="font-size:.76rem;margin:.5rem 0 0">✅ You receive <strong id="prev-you">R 0</strong> per container after invoice verification.</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label class="field-label">Valid from *</label>
+              <input type="date" name="validFrom" required value="2026-04-01"
+                style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+            </div>
+            <div>
+              <label class="field-label">Valid to *</label>
+              <input type="date" name="validTo" required value="2026-06-30"
+                style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Notes (optional)</label>
+            <textarea name="notes" rows="3" placeholder="e.g. Includes toll fees. Excludes port handling, demurrage, and customs charges. Rate subject to fuel review monthly."
+              style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:.65rem .9rem;background:rgba(255,255,255,.9);font-size:.88rem;line-height:1.5"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div style="display:flex;gap:.7rem;justify-content:flex-end;margin-top:.8rem">
+        <a href="{{ url_for('supplier.quote_requests') }}" class="primary-button" style="text-decoration:none;background:transparent;color:var(--muted);border:1px solid var(--line)">Cancel</a>
+        <button type="submit" class="primary-button">Submit for approval →</button>
+      </div>
+      <p class="muted" style="font-size:.78rem;text-align:right;margin:.5rem 0 0">Quotes are reviewed by the FreightFlow team within 1 business day.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function calcPreview(val) {
+  const rate = parseFloat(val) || 0;
+  const fee = Math.round(rate * 0.10);
+  const shipper = rate + fee;
+  document.getElementById('price-preview').style.display = rate > 0 ? 'block' : 'none';
+  document.getElementById('prev-supplier').textContent = 'R ' + rate.toLocaleString();
+  document.getElementById('prev-fee').textContent = '+ R ' + fee.toLocaleString();
+  document.getElementById('prev-shipper').textContent = 'R ' + shipper.toLocaleString();
+  document.getElementById('prev-you').textContent = 'R ' + rate.toLocaleString();
+}
+function highlightCT(radio) {
+  document.querySelectorAll('.ct-opt').forEach(l => {
+    l.style.borderColor = l.querySelector('input').checked ? 'var(--accent)' : 'var(--line)';
+    l.style.background  = l.querySelector('input').checked ? 'rgba(47,108,87,.06)' : '';
+  });
+}
+// Highlight default on load
+document.querySelector('.ct-opt input:checked') && highlightCT(document.querySelector('.ct-opt input:checked'));
+</script>
+{% endblock %}

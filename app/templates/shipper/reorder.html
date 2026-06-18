@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .reorder-card{background:var(--paper);border:2px solid var(--accent);border-radius:22px;padding:1.6rem}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.6rem}
+  .reorder-field{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem}
+  .reorder-field label{font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.04em}
+  .reorder-field input,.reorder-field select{width:100%;border:none;background:transparent;font-size:.95rem;color:var(--text);outline:none}
+  @media(max-width:600px){.field-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Bookings</p>
+      <h1>🔁 Reorder Shipment</h1>
+      <p class="topbar-copy">Re-booking {{ original.ref }}. All details are pre-filled — adjust anything and confirm.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.bookings') }}" class="ghost-button">← Back to bookings</a>
+    </div>
+  </div>
+
+  <!-- Original booking summary -->
+  <div style="background:rgba(21,95,160,.06);border:1px solid rgba(21,95,160,.15);border-radius:16px;padding:1rem 1.2rem">
+    <p class="eyebrow" style="margin-bottom:.4rem">Original booking</p>
+    <div style="display:flex;gap:2rem;flex-wrap:wrap">
+      <span><strong>Ref:</strong> {{ original.ref }}</span>
+      <span><strong>Route:</strong> {{ original.route }}</span>
+      <span><strong>Supplier:</strong> {{ original.supplier }}</span>
+      <span><strong>Value:</strong> {{ zar(original.value) }}</span>
+      <span><strong>Status:</strong> {{ original.status }}</span>
+    </div>
+  </div>
+
+  <div class="reorder-card">
+    <h2 style="margin-bottom:1rem">New booking details</h2>
+    <form action="{{ '#' }}" method="POST">
+      <div class="field-row">
+        <div class="reorder-field">
+          <label>Collection address</label>
+          <input type="text" name="collection_address" value="{{ original.collectionAddress }}">
+        </div>
+        <div class="reorder-field">
+          <label>Delivery address</label>
+          <input type="text" name="delivery_address" value="{{ original.deliveryAddress }}">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:.8rem">
+        <div class="reorder-field">
+          <label>Collection date</label>
+          <input type="date" name="collect_date" value="">
+        </div>
+        <div class="reorder-field">
+          <label>Commodity</label>
+          <input type="text" name="commodity" value="{{ original.commodity }}">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:.8rem">
+        <div class="reorder-field">
+          <label>Pieces / units</label>
+          <input type="number" name="pieces" value="{{ original.pieces }}">
+        </div>
+        <div class="reorder-field">
+          <label>Weight per item (kg)</label>
+          <input type="number" name="weight" value="{{ original.weightPerItem }}">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:.8rem">
+        <div class="reorder-field">
+          <label>Preferred supplier</label>
+          <select name="supplier_pref">
+            <option value="">Same supplier ({{ original.supplier }})</option>
+            <option value="ai">Let FreightFlow AI choose</option>
+          </select>
+        </div>
+        <div class="reorder-field">
+          <label>Collection contact</label>
+          <input type="text" name="collection_contact" value="{{ original.collectionContact }}">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.8rem;margin-top:1.5rem;flex-wrap:wrap">
+        <button type="submit" class="primary-button" style="padding:.8rem 2rem">🔁 Confirm reorder</button>
+        <a href="{{ url_for('shipper.bookings') }}" class="ghost-button">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Previous details reference -->
+  <div class="stat-card" style="padding:1.3rem">
+    <p class="eyebrow" style="margin-bottom:.6rem">Original shipment reference details</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem">
+      <div><p class="small-note">Collection contact</p><strong>{{ original.collectionContact }}</strong></div>
+      <div><p class="small-note">Delivery contact</p><strong>{{ original.deliveryContact }}</strong></div>
+      <div><p class="small-note">Driver</p><strong>{{ original.driverName }}</strong></div>
+      <div><p class="small-note">Vehicle reg</p><strong>{{ original.vehicleReg }}</strong></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Complaints</p>
+      <h1>{{ complaint.ref }}</h1>
+      <p class="topbar-copy">{{ complaint.category }}{% if complaint.booking %} — Booking {{ complaint.booking.ref }}{% endif %}</p>
+    </div>
+    <span style="font-size:.8rem;font-weight:700;padding:.35rem .9rem;border-radius:999px;background:{{ complaint.status_color }}18;color:{{ complaint.status_color }};align-self:flex-start;margin-top:.4rem">
+      {{ complaint.status }}
+    </span>
+  </div>
+
+  <div class="grid two-up">
+    <!-- Timeline -->
+    <section class="panel">
+      <div class="panel-head"><h2>Complaint timeline</h2></div>
+      <div class="stack" style="gap:.7rem;padding:.3rem 0">
+
+        <!-- Step 1: Submitted -->
+        <div style="display:flex;gap:.9rem;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">1</div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:14px;padding:.8rem">
+            <strong>Complaint submitted</strong>
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ complaint.created_at.strftime('%d %b %Y at %H:%M') }}</p>
+            <p style="font-size:.88rem;margin:.6rem 0 0;line-height:1.55">{{ complaint.description }}</p>
+            {% if complaint.evidence_files %}
+            <p style="font-size:.8rem;margin:.5rem 0 0;color:var(--accent)">📎 Evidence attached: {{ complaint.evidence_files.replace(',', ', ') }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Step 2: Admin review -->
+        <div style="display:flex;gap:.9rem;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:50%;background:{% if complaint.status in ['Under Admin Review','Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}#854d0e{% else %}#e5e7eb{% endif %};color:{% if complaint.status in ['Under Admin Review','Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}#fff{% else %}#9ca3af{% endif %};display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">2</div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:14px;padding:.8rem;opacity:{% if complaint.status in ['Under Admin Review','Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}1{% else %}.45{% endif %}">
+            <strong>Admin review</strong>
+            {% if complaint.status == 'Submitted' %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Awaiting review — our team will respond within 2 hours.</p>
+            {% else %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Under review by FreightFlow support team.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Step 3: Forwarded to supplier -->
+        <div style="display:flex;gap:.9rem;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:50%;background:{% if complaint.status in ['Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}#7e22ce{% else %}#e5e7eb{% endif %};color:{% if complaint.status in ['Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}#fff{% else %}#9ca3af{% endif %};display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">3</div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:14px;padding:.8rem;opacity:{% if complaint.status in ['Forwarded to Supplier','Supplier Responded','Resolved','Closed'] %}1{% else %}.45{% endif %}">
+            <strong>Forwarded to supplier</strong>
+            {% if complaint.forwarded_at %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Forwarded {{ complaint.forwarded_at.strftime('%d %b %Y at %H:%M') }}. Supplier has 4 hours to respond.</p>
+            {% else %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Admin will forward once review is complete.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Step 4: Supplier response -->
+        <div style="display:flex;gap:.9rem;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:50%;background:{% if complaint.status in ['Supplier Responded','Resolved','Closed'] %}var(--green){% else %}#e5e7eb{% endif %};color:{% if complaint.status in ['Supplier Responded','Resolved','Closed'] %}#fff{% else %}#9ca3af{% endif %};display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">4</div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:14px;padding:.8rem;opacity:{% if complaint.status in ['Supplier Responded','Resolved','Closed'] %}1{% else %}.45{% endif %}">
+            <strong>Supplier response received</strong>
+            {% if complaint.supplier_response %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Responded {{ complaint.supplier_responded_at.strftime('%d %b %Y at %H:%M') if complaint.supplier_responded_at else '' }}</p>
+            <p style="font-size:.88rem;margin:.5rem 0 0;line-height:1.5;background:rgba(126,34,206,.06);border:1px solid rgba(126,34,206,.14);border-radius:10px;padding:.7rem">{{ complaint.supplier_response }}</p>
+            {% else %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Awaiting supplier response.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Step 5: Resolution -->
+        <div style="display:flex;gap:.9rem;align-items:flex-start">
+          <div style="width:34px;height:34px;border-radius:50%;background:{% if complaint.status in ['Resolved','Closed'] %}var(--green){% else %}#e5e7eb{% endif %};color:{% if complaint.status in ['Resolved','Closed'] %}#fff{% else %}#9ca3af{% endif %};display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">5</div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:14px;padding:.8rem;opacity:{% if complaint.status in ['Resolved','Closed'] %}1{% else %}.45{% endif %}">
+            <strong>Resolution</strong>
+            {% if complaint.resolution_notes %}
+            <p style="font-size:.88rem;margin:.4rem 0 0;line-height:1.55">{{ complaint.resolution_notes }}</p>
+            {% if complaint.resolved_at %}<p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Resolved {{ complaint.resolved_at.strftime('%d %b %Y at %H:%M') }}</p>{% endif %}
+            {% else %}
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Admin will mediate and communicate the outcome here.</p>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Sidebar -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Complaint summary</h2></div>
+        <div class="stack" style="gap:.45rem">
+          <div class="summary-row"><span>Reference</span><strong>{{ complaint.ref }}</strong></div>
+          <div class="summary-row"><span>Category</span><strong>{{ complaint.category }}</strong></div>
+          <div class="summary-row"><span>Priority</span>
+            <strong style="color:{% if complaint.priority=='Critical' %}#9b1c1c{% elif complaint.priority=='Urgent' %}#7a5800{% else %}var(--accent){% endif %}">{{ complaint.priority }}</strong>
+          </div>
+          <div class="summary-row"><span>Status</span>
+            <strong style="color:{{ complaint.status_color }}">{{ complaint.status }}</strong>
+          </div>
+          <div class="summary-row"><span>Submitted</span><strong>{{ complaint.created_at.strftime('%d %b %Y') }}</strong></div>
+          {% if complaint.booking %}
+          <div class="summary-row"><span>Booking</span><strong>{{ complaint.booking.ref }}</strong></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <div style="background:rgba(155,28,28,.05);border:1px solid rgba(155,28,28,.14);border-radius:16px;padding:1rem">
+        <p style="margin:0 0 .4rem;font-weight:600;font-size:.9rem;color:#9b1c1c">🔒 Your protection</p>
+        <p class="muted" style="font-size:.83rem;margin:0;line-height:1.55">Your complaint is handled exclusively through FreightFlow. Supplier and driver contact details are never shared with you — all mediation is done by our support team.</p>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:16px;padding:1rem">
+        <p style="margin:0 0 .3rem;font-weight:600;font-size:.9rem">Support contact</p>
+        <p class="muted" style="font-size:.85rem;margin:0">Email: <a href="mailto:support@freightflow.co.za">support@freightflow.co.za</a></p>
+        <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Response: 2 hrs (business) · 15 min (critical)</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

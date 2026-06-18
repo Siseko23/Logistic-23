@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .analytics-hero{background:linear-gradient(135deg,rgba(21,95,160,.12),rgba(21,95,160,.04));border:1px solid rgba(21,95,160,.18);border-radius:22px;padding:1.5rem;text-align:center}
+  .big-spend{font-size:3rem;font-weight:700;font-family:'IBM Plex Serif',serif;color:var(--accent-dark);line-height:1}
+  .chart-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:1.2rem}
+  .breakdown-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
+  .breakdown-row:last-child{border-bottom:none}
+  .bar-fill{height:8px;border-radius:999px;background:var(--accent);transition:width .5s ease}
+  .route-chip{font-size:.76rem;padding:.25rem .65rem;border-radius:999px;background:rgba(21,95,160,.1);color:var(--accent-dark);font-weight:600}
+</style>
+{% endblock %}
+{% block content %}
+{% set months = spend.monthly %}
+{% set latest = months[-1] %}
+{% set total_all = months|sum(attribute='total') %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Analytics</p>
+      <h1>Spend analytics</h1>
+      <p class="topbar-copy">Track your logistics spend by route, commodity, and supplier. Export anytime.</p>
+    </div>
+    <div class="button-row">
+      <button onclick="exportCSV()" class="primary-button">⬇ Export Excel/CSV</button>
+    </div>
+  </div>
+
+  <!-- Hero stats -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+    <div class="stat-card">
+      <p class="stat-label">6-month total spend</p>
+      <strong>R {{ "{:,.0f}".format(total_all) }}</strong>
+      <p class="small-note">Nov 2025 – Apr 2026</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Last month spend</p>
+      <strong>R {{ "{:,.0f}".format(latest.total) }}</strong>
+      <p class="small-note">{{ latest.month }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Monthly avg</p>
+      <strong>R {{ "{:,.0f}".format((total_all / months|length)|round|int) }}</strong>
+      <p class="small-note">Based on 6 months</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Top supplier</p>
+      <strong style="font-size:1rem">{{ latest.topSupplier }}</strong>
+      <p class="small-note">By spend this month</p>
+    </div>
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Monthly trend chart -->
+    <div class="chart-card">
+      <h3 style="margin:0 0 1rem;font-family:'IBM Plex Serif',serif">Monthly spend trend</h3>
+      <canvas id="spendChart" height="200"></canvas>
+    </div>
+
+    <!-- Route breakdown -->
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 style="margin:0;font-family:'IBM Plex Serif',serif">By route</h3>
+        <span class="muted" style="font-size:.82rem">{{ latest.month }}</span>
+      </div>
+      {% set route_total = latest.routes.values()|sum %}
+      {% for route, amount in latest.routes.items() %}
+      <div class="breakdown-row">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+            <span style="font-size:.88rem;font-weight:600">{{ route }}</span>
+            <span style="font-size:.88rem;color:var(--accent-dark);font-weight:700">R {{ "{:,.0f}".format(amount) }}</span>
+          </div>
+          <div style="background:rgba(21,95,160,.1);border-radius:999px;height:8px;overflow:hidden">
+            <div class="bar-fill" style="width:{{ ((amount / route_total) * 100)|round|int }}%"></div>
+          </div>
+        </div>
+        <span style="font-size:.78rem;color:var(--muted);flex-shrink:0;width:36px;text-align:right">{{ ((amount / route_total) * 100)|round|int }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Commodity breakdown -->
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 style="margin:0;font-family:'IBM Plex Serif',serif">By commodity</h3>
+        <span class="muted" style="font-size:.82rem">{{ latest.month }}</span>
+      </div>
+      {% set comm_total = latest.commodities.values()|sum %}
+      {% for comm, amount in latest.commodities.items() %}
+      <div class="breakdown-row">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+            <span style="font-size:.88rem">{{ comm }}</span>
+            <span style="font-size:.88rem;font-weight:700">R {{ "{:,.0f}".format(amount) }}</span>
+          </div>
+          <div style="background:rgba(47,108,87,.1);border-radius:999px;height:8px;overflow:hidden">
+            <div style="height:100%;border-radius:999px;background:var(--green);width:{{ ((amount / comm_total) * 100)|round|int }}%;transition:width .5s"></div>
+          </div>
+        </div>
+        <span style="font-size:.78rem;color:var(--muted);flex-shrink:0;width:36px;text-align:right">{{ ((amount / comm_total) * 100)|round|int }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Monthly table -->
+    <div class="chart-card">
+      <h3 style="margin:0 0 1rem;font-family:'IBM Plex Serif',serif">Month-by-month</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem;font-size:.82rem">
+        <div style="font-weight:700;color:var(--muted);padding:.4rem 0;border-bottom:2px solid var(--line)">Month</div>
+        <div style="font-weight:700;color:var(--muted);padding:.4rem 0;border-bottom:2px solid var(--line);text-align:right">Spend</div>
+        <div style="font-weight:700;color:var(--muted);padding:.4rem 0;border-bottom:2px solid var(--line);text-align:right">vs prev</div>
+        {% for i, m in months|enumerate_filter %}
+        {% set prev = months[i-1].total if i > 0 else m.total %}
+        {% set delta = ((m.total - prev) / prev * 100)|round|int if prev > 0 and i > 0 else 0 %}
+        <div style="padding:.5rem 0;border-bottom:1px dashed var(--line)">{{ m.month }}</div>
+        <div style="padding:.5rem 0;border-bottom:1px dashed var(--line);text-align:right;font-weight:600">R {{ "{:,.0f}".format(m.total) }}</div>
+        <div style="padding:.5rem 0;border-bottom:1px dashed var(--line);text-align:right;color:{{ 'var(--green)' if delta > 0 else '#c0392b' if delta < 0 else 'var(--muted)' }}">
+          {% if i > 0 %}{{ '+' if delta > 0 else '' }}{{ delta }}%{% else %}—{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Insight callout -->
+  <section class="panel" style="background:rgba(21,95,160,.04);border:1px solid rgba(21,95,160,.15)">
+    <div style="display:flex;gap:1rem;align-items:flex-start">
+      <span style="font-size:1.8rem">💡</span>
+      <div>
+        <strong>Spend insight</strong>
+        <p class="muted" style="margin:.35rem 0 0">The Durban → Johannesburg route accounts for the largest share of your spend. Consolidating shipments on this lane or booking further in advance could yield volume discounts. Your top supplier Kopano Linehaul has a 94% acceptance rate — consider setting them as a preferred supplier.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Hidden CSV data -->
+<script id="csv-data" type="application/json">{{ spend.monthly | tojson }}</script>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const months = JSON.parse(document.getElementById('csv-data').textContent);
+
+// Spend trend chart
+const ctx = document.getElementById('spendChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: months.map(m => m.month),
+    datasets: [{
+      label: 'Spend (R)',
+      data: months.map(m => m.total),
+      backgroundColor: 'rgba(21,95,160,.7)',
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => 'R ' + ctx.raw.toLocaleString()
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { callback: v => 'R'+Math.round(v/1000)+'k' },
+        grid: { color: 'rgba(0,0,0,.06)' }
+      },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+function exportCSV() {
+  const rows = [['Month','Total Spend','Durban→JHB','Cape Town→Gqeberha','JHB→Polokwane']];
+  months.forEach(m => {
+    rows.push([m.month, m.total, ...Object.values(m.routes)]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'freightflow_spend_analytics.csv';
+  a.click();
+}
+</script>
+{% endblock %}

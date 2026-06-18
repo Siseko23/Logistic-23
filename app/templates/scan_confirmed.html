@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FreightFlow Nexus — {{ 'Collection' if event=='collect' else 'Delivery' }} Confirmed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--green:#2f6c57;--accent:#155fa0;--text:#12253f;--muted:#5f7692;font-family:'Space Grotesk',sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;background:radial-gradient(circle at top,rgba(47,108,87,.12),transparent 40%),linear-gradient(180deg,#f7fbff,#eaf3ff)}
+    .card{background:#fff;border-radius:24px;padding:2rem;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(18,37,63,.12);text-align:center}
+    .check{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font-size:2rem;margin:0 auto 1.2rem}
+    .check.collect{background:rgba(21,95,160,.12)}
+    .check.deliver{background:rgba(47,108,87,.15)}
+    h1{font-family:'IBM Plex Serif',serif;margin:0 0 .4rem;color:var(--text)}
+    p{color:var(--muted);margin:.3rem 0}
+    .ref{font-weight:700;font-size:1.1rem;color:var(--text);margin:.8rem 0}
+    .ts{font-size:.85rem;color:var(--muted);font-family:monospace}
+    .next-step{margin-top:1.2rem;padding:.75rem 1rem;border-radius:14px;font-size:.87rem;font-weight:500;text-align:left}
+    .next-step.collect{background:rgba(21,95,160,.07);color:var(--accent)}
+    .next-step.deliver{background:rgba(47,108,87,.07);color:var(--green)}
+    .brand{display:flex;align-items:center;gap:.6rem;justify-content:center;margin-top:1.4rem;color:var(--muted);font-size:.82rem}
+    .brand-mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#5f9dd5);color:#fff;font-weight:700;font-size:.8rem;display:grid;place-items:center}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if event == 'collect' %}
+    <div class="check collect">🚚</div>
+    <h1>Collection confirmed</h1>
+    <p>Cargo has been scanned out and is now <strong>In Transit</strong>.</p>
+    <div class="ref">{{ ref }}</div>
+    <div class="ts">{{ timestamp }}</div>
+    <div class="next-step collect">
+      ✓ Shipper notified by email and SMS<br>
+      ✓ Booking status updated to <strong>In Transit</strong><br>
+      ✓ Timestamp recorded for performance scoring<br><br>
+      <strong>Next:</strong> Scan again at the delivery address to confirm delivery.
+    </div>
+    {% else %}
+    <div class="check deliver">📦</div>
+    <h1>Delivery confirmed</h1>
+    <p>Cargo has been scanned in. Booking is now <strong>Delivered</strong>.</p>
+    <div class="ref">{{ ref }}</div>
+    <div class="ts">{{ timestamp }}</div>
+    <div class="next-step deliver">
+      ✓ Shipper and admin notified<br>
+      ✓ Booking status updated to <strong>Delivered</strong><br>
+      ✓ Supplier performance score automatically updated<br>
+      ✓ Tax invoice generated and sent to shipper
+    </div>
+    {% endif %}
+
+    <div class="brand">
+      <div class="brand-mark">FF</div>
+      FreightFlow Nexus
+    </div>
+  </div>
+</body>
+</html>

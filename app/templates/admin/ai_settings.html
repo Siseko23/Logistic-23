@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .weight-display{display:flex;gap:0;margin:.7rem 0;border-radius:12px;overflow:hidden;height:32px}
+  .weight-seg{display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:700;color:#fff;transition:flex .3s}
+  .weight-seg.price{background:var(--accent)}
+  .weight-seg.perf{background:var(--green)}
+  .weight-seg.prox{background:#7a5800}
+  .weight-warn{color:#c0392b;font-size:.82rem;font-weight:600;margin-top:.4rem}
+  .formula-box{background:rgba(21,95,160,.06);border:1px solid rgba(21,95,160,.15);border-radius:14px;padding:.9rem 1.1rem;font-family:monospace;font-size:.88rem;color:var(--accent-dark);margin:.8rem 0}
+  .setting-section{border-bottom:1px solid var(--line);padding-bottom:1.2rem;margin-bottom:1.2rem}
+  .setting-section:last-child{border-bottom:none;margin-bottom:0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal</p>
+      <h1>AI Engine Settings</h1>
+      <p class="topbar-copy">Configure the supplier selection engine, proximity filtering, performance score deductions, and response window. Changes apply immediately to all new quote requests.</p>
+    </div>
+  </div>
+
+  {% if request.method == 'POST' %}
+  <div style="background:rgba(47,108,87,.1);border:1px solid rgba(47,108,87,.3);border-radius:12px;padding:.8rem 1rem;color:var(--green)">
+    <strong>AI engine settings saved.</strong> All new quote requests will use the updated configuration.
+  </div>
+  {% endif %}
+
+  <div class="grid two-up" style="align-items:start">
+
+    <form method="POST">
+
+      <!-- Composite score weights -->
+      <section class="panel" style="margin-bottom:1.2rem">
+        <div class="panel-head">
+          <h2>Composite score weights</h2>
+          <p>Three weighted criteria determine the AI's supplier ranking. Weights must total 100%.</p>
+        </div>
+
+        <div class="setting-section">
+          <div class="formula-box">
+            compositeScore = (priceScore × {{ ai_settings.priceWeight }}%) + (perfScore × {{ ai_settings.performanceWeight }}%) + (proxScore × {{ ai_settings.proximityWeight }}%)
+          </div>
+
+          <!-- Visual weight bar -->
+          <div class="weight-display">
+            <div class="weight-seg price" style="flex:{{ ai_settings.priceWeight }}">Price {{ ai_settings.priceWeight }}%</div>
+            <div class="weight-seg perf" style="flex:{{ ai_settings.performanceWeight }}">Perf {{ ai_settings.performanceWeight }}%</div>
+            <div class="weight-seg prox" style="flex:{{ ai_settings.proximityWeight }}">Prox {{ ai_settings.proximityWeight }}%</div>
+          </div>
+          {% if total_weight != 100 %}
+          <p class="weight-warn">⚠ Weights total {{ total_weight }}% — must equal exactly 100%</p>
+          {% endif %}
+
+          <div class="form-grid compact" style="margin-top:1rem">
+            <label>Price weight (%)
+              <input name="priceWeight" type="number" min="0" max="100" value="{{ ai_settings.priceWeight }}" oninput="updateWeightBar()"/>
+              <small class="muted">Lower price = higher score on this axis</small>
+            </label>
+            <label>Performance score weight (%)
+              <input name="performanceWeight" type="number" min="0" max="100" value="{{ ai_settings.performanceWeight }}" oninput="updateWeightBar()"/>
+              <small class="muted">Supplier historical score (1–5) normalised to 0–1</small>
+            </label>
+            <label>Proximity weight (%)
+              <input name="proximityWeight" type="number" min="0" max="100" value="{{ ai_settings.proximityWeight }}" oninput="updateWeightBar()"/>
+              <small class="muted">Distance from supplier base to pickup point</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <div class="form-grid compact">
+            <label>Proximity radius (km)
+              <input name="proximityRadiusKm" type="number" min="5" max="200" value="{{ ai_settings.proximityRadiusKm }}"/>
+              <small class="muted">Suppliers outside this radius are excluded regardless of price or score</small>
+            </label>
+            <label>Min performance score to qualify
+              <input name="minPerformanceScore" type="number" step="0.1" min="1" max="5" value="{{ ai_settings.minPerformanceScore }}"/>
+              <small class="muted">Suppliers below this score are excluded from AI selection</small>
+            </label>
+            <label>Supplier response window (hours)
+              <input name="supplierResponseWindowHours" type="number" min="1" max="48" value="{{ ai_settings.supplierResponseWindowHours }}"/>
+              <small class="muted">Time to accept before auto-reassignment to next-ranked supplier</small>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Performance score deduction settings -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Performance score deductions</h2>
+          <p>Configure the score impact for each delivery event. Changes apply to all subsequent completed bookings.</p>
+        </div>
+
+        <div class="form-grid compact">
+          <label>Delay &lt; 1 hour (deduction)
+            <input name="delayUnder1hDeduction" type="number" step="0.05" value="{{ perf_settings.delayUnder1hDeduction }}"/>
+          </label>
+          <label>Delay 1–3 hours (deduction)
+            <input name="delay1to3hDeduction" type="number" step="0.05" value="{{ perf_settings.delay1to3hDeduction }}"/>
+          </label>
+          <label>Delay &gt; 3 hours (deduction)
+            <input name="delayOver3hDeduction" type="number" step="0.05" value="{{ perf_settings.delayOver3hDeduction }}"/>
+          </label>
+          <label>DC slot missed (deduction)
+            <input name="dcSlotMissedDeduction" type="number" step="0.05" value="{{ perf_settings.dcSlotMissedDeduction }}"/>
+            <small class="muted">Most severe — strict appointment penalty</small>
+          </label>
+          <label>Cargo damage reported (deduction)
+            <input name="cargoDamageDeduction" type="number" step="0.05" value="{{ perf_settings.cargoDamageDeduction }}"/>
+          </label>
+        </div>
+
+        <button type="submit" class="primary-button wide-button" style="margin-top:1.2rem">Save AI engine settings</button>
+      </section>
+
+    </form>
+
+    <!-- Right: info panel -->
+    <div style="display:flex;flex-direction:column;gap:1.2rem">
+      <section class="panel">
+        <div class="panel-head"><h2>How the AI engine works</h2></div>
+        <ol style="padding-left:1.3rem;color:var(--muted);font-size:.88rem;line-height:1.7;margin:0">
+          <li>Filter suppliers by route match and vehicle availability</li>
+          <li>Exclude suppliers outside the proximity radius</li>
+          <li>Run truck matching engine — remove vehicles that can't carry the load</li>
+          <li>Calculate composite score for each remaining supplier-vehicle pair</li>
+          <li>Auto-select the highest-scoring supplier. If tied, price is tiebreaker</li>
+          <li>Notify supplier via email + SMS. If rejected/timeout → auto-reassign to next</li>
+        </ol>
+        <div style="margin-top:1rem;padding:.8rem;background:rgba(21,95,160,.05);border-radius:12px;font-size:.83rem;color:var(--accent-dark)">
+          <strong>Auditability:</strong> Every AI selection logs the full composite score calculation per supplier — visible in the Bookings view for dispute resolution.
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Current active settings</h2></div>
+        <div style="font-size:.88rem">
+          {% for label, val in [
+            ('Proximity radius', ai_settings.proximityRadiusKm|string + ' km'),
+            ('Price weight', ai_settings.priceWeight|string + '%'),
+            ('Performance weight', ai_settings.performanceWeight|string + '%'),
+            ('Proximity weight', ai_settings.proximityWeight|string + '%'),
+            ('Min score threshold', ai_settings.minPerformanceScore|string),
+            ('Response window', ai_settings.supplierResponseWindowHours|string + ' hours'),
+          ] %}
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px dashed var(--line)">
+            <span style="color:var(--muted)">{{ label }}</span><strong>{{ val }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function updateWeightBar() {
+  const p = +document.querySelector('[name="priceWeight"]').value || 0;
+  const s = +document.querySelector('[name="performanceWeight"]').value || 0;
+  const x = +document.querySelector('[name="proximityWeight"]').value || 0;
+  const segs = document.querySelectorAll('.weight-seg');
+  if (segs[0]) { segs[0].style.flex = p; segs[0].textContent = `Price ${p}%`; }
+  if (segs[1]) { segs[1].style.flex = s; segs[1].textContent = `Perf ${s}%`; }
+  if (segs[2]) { segs[2].style.flex = x; segs[2].textContent = `Prox ${x}%`; }
+}
+</script>
+{% endblock %}

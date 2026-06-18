@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+.chat-list-item{display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.42);cursor:pointer;text-decoration:none;color:inherit;transition:border-color .2s,background .2s}
+.chat-list-item:hover,.chat-list-item.active{border-color:var(--accent);background:rgba(210,230,250,.45)}
+.avatar{width:44px;height:44px;border-radius:50%;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:1rem;flex-shrink:0}
+.chat-bubble{max-width:78%;padding:.65rem .95rem;border-radius:18px;font-size:.9rem;line-height:1.5}
+.bubble-in{background:rgba(244,249,255,.9);border:1px solid var(--line);border-bottom-left-radius:6px;align-self:flex-start}
+.bubble-out{background:var(--accent);color:#fff;border-bottom-right-radius:6px;align-self:flex-end}
+.bubble-time{font-size:.72rem;opacity:.65;margin-top:.25rem}
+#chat-messages{display:flex;flex-direction:column;gap:.6rem;min-height:320px;max-height:420px;overflow-y:auto;padding:.5rem 0}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Supplier portal</p><h1>Driver chat</h1><p class="topbar-copy">Message your drivers directly. Share instructions, receive updates, and attach POD photos.</p></div></div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Your drivers</h2></div>
+      <div class="stack" style="gap:.6rem">
+        {% for d in drivers %}
+        <a href="{{ url_for('supplier.bookings', driver_id=d.id) }}" class="chat-list-item {% if active_driver and active_driver.id==d.id %}active{% endif %}">
+          <div class="avatar">{{ d.name.split()[0][0] }}{{ d.name.split()[-1][0] }}</div>
+          <div style="flex:1">
+            <strong>{{ d.name }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.1rem 0 0">{{ d.vehicleType }} · {{ d.vehicleReg }}</p>
+          </div>
+          <span class="status-badge {% if d.status=='Active' %}online{% else %}offline{% endif %}" style="font-size:.72rem">{{ d.status }}</span>
+        </a>
+        {% else %}
+        <p class="muted">No drivers assigned to your account yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      {% if active_driver %}
+      <div class="panel-head" style="display:flex;align-items:center;gap:1rem;margin-bottom:.8rem">
+        <div class="avatar" style="width:40px;height:40px;font-size:.88rem">{{ active_driver.name.split()[0][0] }}{{ active_driver.name.split()[-1][0] }}</div>
+        <div>
+          <h2 style="margin:0">{{ active_driver.name }}</h2>
+          <p class="muted" style="margin:.1rem 0 0;font-size:.82rem">{{ active_driver.vehicleType }} · {{ active_driver.phone }}</p>
+        </div>
+      </div>
+
+      <div id="chat-messages">
+        {% if messages %}
+          {% for msg in messages %}
+          <div style="display:flex;flex-direction:column;{% if msg.sender=='supplier' %}align-items:flex-end{% else %}align-items:flex-start{% endif %}">
+            <div class="chat-bubble {% if msg.sender=='supplier' %}bubble-out{% else %}bubble-in{% endif %}">
+              {{ msg.text }}
+              {% if msg.attachment %}<p style="font-size:.78rem;margin:.3rem 0 0;opacity:.8">📎 {{ msg.attachment }}</p>{% endif %}
+            </div>
+            <p class="bubble-time" style="{% if msg.sender=='supplier' %}text-align:right{% endif %}">{{ msg.time }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align:center;margin-top:2rem;color:var(--muted)">
+            <p style="font-size:1.5rem">💬</p>
+            <p>No messages yet. Start the conversation below.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <form method="POST" action="{{ '#' }}" enctype="multipart/form-data" style="margin-top:1rem">
+        <div style="display:flex;gap:.6rem;align-items:flex-end">
+          <textarea name="message" rows="2" placeholder="Type a message…" style="flex:1;resize:none;border-radius:14px;border:1px solid var(--line);padding:.65rem .85rem;background:rgba(255,255,255,.9)" required></textarea>
+          <div style="display:flex;flex-direction:column;gap:.4rem">
+            <label style="cursor:pointer;padding:.55rem .75rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.6);font-size:.8rem;text-align:center" title="Attach file">
+              📎
+              <input type="file" name="attachment" accept=".pdf,.jpg,.png" style="display:none" onchange="document.getElementById('attach-name').textContent=this.files[0]?.name||''"/>
+            </label>
+            <button type="submit" class="primary-button" style="padding:.55rem .9rem">Send</button>
+          </div>
+        </div>
+        <p id="attach-name" style="font-size:.75rem;color:var(--accent);margin:.3rem 0 0"></p>
+      </form>
+
+      {% else %}
+      <div style="text-align:center;padding:3rem 1rem;color:var(--muted)">
+        <p style="font-size:1.8rem">👈</p>
+        <p>Select a driver from the list to open their chat thread.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msgs = document.getElementById('chat-messages');
+if (msgs) msgs.scrollTop = msgs.scrollHeight;
+</script>
+{% endblock %}

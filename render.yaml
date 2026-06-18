@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: freightflow-nexus
+    runtime: python
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: gunicorn run:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PLATFORM_FEE_PCT
+        value: "26.7"
+      - key: PYTHON_VERSION
+        value: "3.11.0"

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>FreightFlow Driver App</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--navy:#12253F;--accent:#155FA0;--green:#1a6b3c;--amber:#7a5800;--red:#9b1c1c;--bg:#f0f4f8;--card:#fff;--line:#dde3ea;--text:#12253F;--muted:#5f7692}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text)}
+#app{display:flex;flex-direction:column;height:100%;max-width:420px;margin:0 auto;background:var(--bg)}
+
+/* Status bar */
+.status-bar{background:var(--navy);color:#fff;padding:.4rem 1rem;font-size:.72rem;display:flex;justify-content:space-between;align-items:center}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:.3rem;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Header */
+.app-header{background:var(--navy);color:#fff;padding:.9rem 1rem .8rem;display:flex;align-items:center;justify-content:space-between}
+.app-header h1{font-size:1rem;font-weight:600}
+.avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+
+/* Tabs */
+.tabs{display:flex;background:var(--navy);padding:0 .5rem .5rem}
+.tab{flex:1;padding:.6rem .3rem;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.55);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:#fff;border-bottom-color:#fff}
+
+/* Screen */
+.screen{display:none;flex:1;overflow-y:auto;padding:.9rem}
+.screen.active{display:block}
+
+/* Cards */
+.card{background:var(--card);border-radius:18px;padding:1rem 1.1rem;margin-bottom:.8rem;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid var(--line)}
+.card-label{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
+.card h2{font-size:1rem;font-weight:600;margin-bottom:.2rem}
+.card p{font-size:.85rem;color:var(--muted)}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;margin-bottom:.4rem}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-amber{background:#fef9c3;color:#854d0e}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-blue{background:#dbeafe;color:#1e40af}
+
+/* Map placeholder */
+#map-container{height:220px;border-radius:16px;overflow:hidden;position:relative;background:#e2e8f0;margin-bottom:.8rem}
+#map-container iframe{width:100%;height:100%;border:none}
+.map-overlay{position:absolute;bottom:.6rem;left:.6rem;background:rgba(18,37,63,.85);color:#fff;border-radius:10px;padding:.4rem .7rem;font-size:.75rem}
+
+/* Tracking pulse */
+.tracking-active{display:flex;align-items:center;gap:.5rem;background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:.5rem .8rem;margin-bottom:.8rem}
+.tracking-active span{font-size:.82rem;font-weight:600;color:#166534}
+
+/* Big action buttons */
+.action-btn{width:100%;padding:.85rem;border-radius:16px;border:none;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:.6rem;transition:opacity .15s}
+.action-btn:active{opacity:.8}
+.btn-green{background:#16a34a;color:#fff}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-amber{background:#d97706;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--text)}
+
+/* QR scanner sim */
+#qr-area{background:#000;border-radius:16px;height:180px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:.8rem}
+.qr-frame{width:130px;height:130px;border:2px solid #4ade80;border-radius:12px;position:relative}
+.qr-line{position:absolute;width:100%;height:2px;background:#4ade80;top:50%;animation:scan 2s infinite}
+@keyframes scan{0%{top:10%}50%{top:90%}100%{top:10%}}
+.qr-label{position:absolute;bottom:.6rem;color:#fff;font-size:.75rem}
+
+/* Coordinates display */
+.coords{font-family:monospace;font-size:.78rem;background:#f1f5f9;border-radius:10px;padding:.5rem .7rem;margin-bottom:.6rem}
+
+/* Emergency items */
+.emergency-item{display:flex;align-items:center;gap:.8rem;padding:.8rem;border:1.5px solid var(--line);border-radius:14px;margin-bottom:.5rem;cursor:pointer;background:var(--card)}
+.emergency-item:active{background:#f8fafc}
+.emergency-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+
+/* Login screen */
+#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;z-index:100}
+#login-screen h1{color:#fff;font-size:1.5rem;margin-bottom:.4rem}
+#login-screen p{color:rgba(255,255,255,.6);font-size:.88rem;margin-bottom:2rem;text-align:center}
+.login-input{width:100%;padding:.85rem 1rem;border-radius:14px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:1rem;margin-bottom:.8rem}
+.login-input::placeholder{color:rgba(255,255,255,.4)}
+.login-btn{width:100%;padding:.85rem;border-radius:14px;border:none;background:#fff;color:var(--navy);font-size:1rem;font-weight:700;cursor:pointer}
+.logo-mark{font-size:2rem;font-weight:800;color:#fff;margin-bottom:.2rem}
+.logo-sub{font-size:.75rem;color:rgba(255,255,255,.5);margin-bottom:2.5rem;letter-spacing:.08em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="logo-mark">FF</div>
+  <div class="logo-sub">FreightFlow Driver</div>
+  <h1>Driver login</h1>
+  <p>Enter your phone number and PIN provided by your fleet manager</p>
+  <input class="login-input" id="l-phone" type="tel" placeholder="Phone number e.g. +27 82 555 0191"/>
+  <input class="login-input" id="l-pin" type="password" maxlength="4" placeholder="4-digit PIN"/>
+  <p id="l-error" style="color:#fca5a5;font-size:.82rem;margin-bottom:.7rem;min-height:1.2rem"></p>
+  <button class="login-btn" onclick="doLogin()">Log in</button>
+  <p style="color:rgba(255,255,255,.35);font-size:.72rem;margin-top:1rem;text-align:center;line-height:1.6">
+    Demo drivers:<br>
+    +27 82 555 0191 · PIN 1234 (Siphamandla Thusi)<br>
+    +27 73 555 0282 · PIN 2222 (Andile Khumalo)<br>
+    +27 61 555 0373 · PIN 3333 (Thabo Nkosi)<br>
+    +27 82 555 0464 · PIN 4444 (Pieter van Wyk)
+  </p>
+</div>
+
+<div id="app" style="display:none">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span><span class="status-dot"></span>GPS active · Durban, KZN</span>
+    <span id="clock">08:32</span>
+  </div>
+
+  <!-- Header -->
+  <div class="app-header">
+    <div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.05em">FreightFlow Driver</div>
+      <h1 id="driver-name">Siphamandla Thusi</h1>
+    </div>
+    <div class="avatar" id="driver-initials">ST</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('job',this)">Active job</button>
+    <button class="tab" onclick="showTab('track',this)">Live tracking</button>
+    <button class="tab" onclick="showTab('scan',this)">QR scan</button>
+    <button class="tab" onclick="showTab('assist',this)">Assistance</button>
+    <button class="tab" onclick="showTab('profile',this)">Profile</button>
+  </div>
+
+  <!-- JOB TAB -->
+  <div class="screen active" id="tab-job">
+    <div class="tracking-active">
+      <span class="status-dot"></span>
+      <span id="tracking-status-text">Sharing location · updating every 3s</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Current booking</div>
+      <span class="badge badge-blue" id="job-status">In Transit</span>
+      <h2 id="job-ref">FFN-2026-0415</h2>
+      <p id="job-route" style="font-weight:600;color:var(--text);margin:.2rem 0">Durban → Johannesburg</p>
+      <p id="job-cargo">48 pallets · Electronics</p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Collection address</div>
+      <p style="font-weight:600;color:var(--text);margin-bottom:.2rem" id="job-collection">12 Electron Rd, Durban North</p>
+      <p id="job-collect-contact">Contact: Sibongile Dlamini · +27 82 555 0123</p>
+      <button class="action-btn btn-blue" style="margin-top:.7rem;margin-bottom:0" onclick="navigate('collection')">🗺️ Navigate to collection</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Delivery address</div>
+      <p style="font-weight:600;color:var(--text);margin-bottom:.2rem" id="job-delivery">45 Commerce Crescent, Johannesburg DC</p>
+      <p id="job-delivery-contact">Contact: Receiving Clerk WH3 · +27 11 555 0987</p>
+      <div style="background:#fef9c3;border-radius:10px;padding:.5rem .7rem;margin:.5rem 0">
+        <p style="font-size:.8rem;color:#854d0e">🏭 DC slot: 09:00–10:00 · Gate 3 · Ref: DC-JHB-20260415-009</p>
+      </div>
+      <button class="action-btn btn-blue" style="margin-top:.4rem;margin-bottom:0" onclick="navigate('delivery')">🗺️ Navigate to delivery</button>
+    </div>
+
+    <button class="action-btn btn-green" onclick="showTab('scan',document.querySelectorAll('.tab')[2])">📷 Scan QR to confirm collection</button>
+  </div>
+
+  <!-- TRACKING TAB -->
+  <div class="screen" id="tab-track">
+    <div class="card" style="padding:.7rem .9rem;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="card-label">GPS coordinates</div>
+        <div class="coords" id="coord-display">-29.8587, 31.0218</div>
+      </div>
+      <div style="text-align:right">
+        <div class="card-label">Speed</div>
+        <strong id="speed-display">0 km/h</strong>
+      </div>
+    </div>
+
+    <div id="map-container">
+      <div id="map-div" style="width:100%;height:100%;background:linear-gradient(135deg,#c7d2fe,#a5f3fc);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem">
+        <span style="font-size:2rem">🗺️</span>
+        <p style="font-size:.85rem;color:var(--navy);font-weight:600">Live map — Durban N3</p>
+        <p style="font-size:.75rem;color:var(--muted)">Moving towards Johannesburg</p>
+      </div>
+      <div class="map-overlay" id="eta-display">ETA: ~4h 22min</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Location broadcast</div>
+      <div id="broadcast-log" style="font-family:monospace;font-size:.72rem;color:var(--muted);height:100px;overflow-y:auto;background:#f8fafc;border-radius:10px;padding:.5rem"></div>
+    </div>
+
+    <div class="card" style="background:#dcfce7;border-color:#86efac">
+      <div class="card-label" style="color:#166534">Shipper can see you</div>
+      <p style="color:#166534;font-size:.85rem">Ubuntu Retail Group is tracking this delivery in real time via the shipper portal. Your location updates every 3 seconds.</p>
+    </div>
+  </div>
+
+  <!-- QR SCAN TAB -->
+  <div class="screen" id="tab-scan">
+    <div class="card">
+      <div class="card-label">QR scan</div>
+      <p style="margin-bottom:.8rem">Scan the waybill QR code at collection or delivery to confirm the event and update the booking status.</p>
+    </div>
+
+    <div id="qr-area">
+      <div class="qr-frame"><div class="qr-line"></div></div>
+      <span class="qr-label">Point camera at waybill QR code</span>
+    </div>
+
+    <div id="scan-result" style="display:none" class="card" style="background:#dcfce7;border-color:#86efac">
+      <p id="scan-result-text"></p>
+    </div>
+
+    <button class="action-btn btn-green" onclick="simulateScan('collect')">✅ Simulate: Confirm collection</button>
+    <button class="action-btn btn-blue" onclick="simulateScan('deliver')">📦 Simulate: Confirm delivery</button>
+    <button class="action-btn btn-ghost" onclick="simulateScan('pod')">📷 Capture POD photo</button>
+  </div>
+
+  <!-- ASSISTANCE TAB -->
+  <div class="screen" id="tab-assist">
+    <div class="card" style="background:#fee2e2;border-color:#fca5a5">
+      <div class="card-label" style="color:#991b1b">Emergency assistance</div>
+      <p style="color:#991b1b;font-size:.85rem">All assistance requests are routed through FreightFlow support. Your supplier and the support team are notified immediately.</p>
+    </div>
+
+    <div id="emergency-item-1" class="emergency-item" onclick="reportIssue('flat_tyre')">
+      <div class="emergency-icon" style="background:#fef9c3">🔧</div>
+      <div><strong>Flat tyre</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Request roadside tyre assistance</p></div>
+    </div>
+    <div class="emergency-item" onclick="reportIssue('breakdown')">
+      <div class="emergency-icon" style="background:#fee2e2">🚨</div>
+      <div><strong>Vehicle breakdown</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Engine, mechanical or electrical failure</p></div>
+    </div>
+    <div class="emergency-item" onclick="reportIssue('accident')">
+      <div class="emergency-icon" style="background:#fee2e2">⚠️</div>
+      <div><strong>Accident / collision</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Report a road incident immediately</p></div>
+    </div>
+    <div class="emergency-item" onclick="reportIssue('fuel')">
+      <div class="emergency-icon" style="background:#dbeafe">⛽</div>
+      <div><strong>Out of fuel</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Request fuel delivery or assistance</p></div>
+    </div>
+    <div class="emergency-item" onclick="reportIssue('gate_refusal')">
+      <div class="emergency-icon" style="background:#f3e8ff">🚧</div>
+      <div><strong>Gate refusal</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Cannot gain entry at destination</p></div>
+    </div>
+    <div class="emergency-item" onclick="reportIssue('cargo_issue')">
+      <div class="emergency-icon" style="background:#fef9c3">📦</div>
+      <div><strong>Cargo issue</strong><p class="card" style="padding:0;box-shadow:none;border:none;font-size:.82rem;color:var(--muted);background:transparent">Damage, shortage or wrong goods</p></div>
+    </div>
+
+    <div id="issue-sent" style="display:none" class="card" style="background:#dcfce7;border-color:#86efac;margin-top:.5rem">
+      <p id="issue-sent-text" style="color:#166534;font-weight:600"></p>
+    </div>
+
+    <div style="margin-top:.5rem;padding:.8rem;background:#f1f5f9;border-radius:14px;font-size:.82rem;color:var(--muted)">
+      📞 FreightFlow 24/7 support: <a href="mailto:support@movement.com" style="color:var(--accent)">support@movement.com</a>
+    </div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div class="screen" id="tab-profile">
+    <div class="card" style="text-align:center;padding:1.5rem 1rem">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;margin:0 auto .7rem" id="profile-avatar">ST</div>
+      <h2 id="profile-name">Siphamandla Thusi</h2>
+      <p class="muted" id="profile-supplier" style="color:var(--muted)">Kopano Linehaul</p>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Driver details</div>
+      <div style="display:grid;gap:.4rem">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.85rem">License</span><strong id="p-license">KZN-2891-A</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.85rem">Type</span><strong id="p-lictype">Code 14 (EC)</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.85rem">Expires</span><strong id="p-licexp">2027-08-15</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.85rem">Vehicle</span><strong id="p-vehicle">Superlink · ND 482-991</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.85rem">Phone</span><strong id="p-phone">+27 82 555 0191</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Performance</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;text-align:center">
+        <div><div style="font-size:1.4rem;font-weight:700;color:var(--accent)" id="p-rating">4.8★</div><div style="font-size:.72rem;color:var(--muted)">Rating</div></div>
+        <div><div style="font-size:1.4rem;font-weight:700;color:var(--green)" id="p-ontime">94%</div><div style="font-size:.72rem;color:var(--muted)">On-time</div></div>
+        <div><div style="font-size:1.4rem;font-weight:700;color:var(--navy)" id="p-deliveries">142</div><div style="font-size:.72rem;color:var(--muted)">Deliveries</div></div>
+      </div>
+    </div>
+
+    <button class="action-btn btn-ghost" onclick="logout()" style="margin-top:.3rem">Log out</button>
+  </div>
+</div>
+
+<script>
+// ── Demo driver data ────────────────────────────────────────────────────
+const DRIVERS = {
+  "+27 82 555 0191": { pin:"1234", id:"DRV-001", name:"Siphamandla Thusi", initials:"ST", supplier:"Kopano Linehaul", licenseNo:"KZN-2891-A", licenseType:"Code 14 (EC)", licenseExpiry:"2027-08-15", vehicleType:"Superlink", vehicleReg:"ND 482-991", phone:"+27 82 555 0191", rating:"4.8★", ontime:"94%", deliveries:"142",
+    booking:{ ref:"FFN-2026-0415", route:"Durban → Johannesburg", status:"In Transit", cargo:"48 pallets · Electronics",
+      collection:"12 Electron Rd, Durban North", collectContact:"Sibongile Dlamini · +27 82 555 0123",
+      delivery:"45 Commerce Crescent, Johannesburg DC", deliveryContact:"Receiving Clerk WH3 · +27 11 555 0987",
+      dc:"DC slot: 09:00–10:00 · Gate 3 · Ref: DC-JHB-20260415-009",
+      startLat:-29.8587, startLng:31.0218, endLat:-26.1952, endLng:28.0340 },
+  },
+  "+27 73 555 0282": { pin:"2222", id:"DRV-002", name:"Andile Khumalo", initials:"AK", supplier:"Kopano Linehaul", licenseNo:"KZN-3104-B", licenseType:"Code 10 (C)", licenseExpiry:"2026-12-01", vehicleType:"8-Ton Rigid", vehicleReg:"ND 331-042", phone:"+27 73 555 0282", rating:"4.5★", ontime:"91%", deliveries:"89",
+    booking:{ ref:"FFN-2026-0412", route:"Cape Town → Gqeberha", status:"Confirmed", cargo:"24 pieces · General freight",
+      collection:"Fresh Terminal, Cape Town Harbour", collectContact:"Jan van der Berg · +27 21 555 0456",
+      delivery:"22 Market Rd, Gqeberha", deliveryContact:"Store Manager · +27 41 555 0789",
+      dc:"", startLat:-33.9180, startLng:18.4230, endLat:-33.9600, endLng:25.6100 },
+  },
+  "+27 61 555 0373": { pin:"3333", id:"DRV-003", name:"Thabo Nkosi", initials:"TN", supplier:"Blue Crane Logistics", licenseNo:"GP-7823-C", licenseType:"Code 14 (EC)", licenseExpiry:"2025-06-30", vehicleType:"Horse & Trailer", vehicleReg:"GP 112-334", phone:"+27 61 555 0373", rating:"3.9★", ontime:"86%", deliveries:"57",
+    booking:{ ref:"FFN-2026-0408", route:"Johannesburg → Polokwane", status:"Delivered", cargo:"6 pieces · Steel",
+      collection:"Fabrication Park, 88 Industrial Rd, Johannesburg", collectContact:"Rudi Botha · +27 11 555 0321",
+      delivery:"Plot 14, Seshego Industrial, Polokwane", deliveryContact:"Site Foreman · +27 15 555 0654",
+      dc:"", startLat:-26.1952, startLng:28.0340, endLat:-23.8962, endLng:29.4486 },
+  },
+  "+27 82 555 0464": { pin:"4444", id:"DRV-004", name:"Pieter van Wyk", initials:"PW", supplier:"Highveld Haulage", licenseNo:"GP-5512-D", licenseType:"Code 14 (EC)", licenseExpiry:"2028-03-20", vehicleType:"Superlink", vehicleReg:"GP 664-220", phone:"+27 82 555 0464", rating:"4.9★", ontime:"97%", deliveries:"231",
+    booking:{ ref:"No active booking", route:"Standing by", status:"Available", cargo:"—",
+      collection:"—", collectContact:"—",
+      delivery:"—", deliveryContact:"—",
+      dc:"", startLat:-25.7461, startLng:28.1881, endLat:-25.7461, endLng:28.1881 },
+  },
+};
+
+let currentDriver = null;
+let socket = null;
+let gpsInterval = null;
+let simLat, simLng, simStep = 0;
+
+// ── Login ────────────────────────────────────────────────────────────────
+function doLogin() {
+  const phone = document.getElementById('l-phone').value.trim();
+  const pin = document.getElementById('l-pin').value.trim();
+  const driver = DRIVERS[phone];
+  if (!driver || driver.pin !== pin) {
+    document.getElementById('l-error').textContent = 'Incorrect phone number or PIN. Please try again.';
+    return;
+  }
+  currentDriver = driver;
+  document.getElementById('l-error').textContent = '';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  populateDriver(driver);
+  startGPS();
+  startClock();
+}
+
+function populateDriver(d) {
+  document.getElementById('driver-name').textContent = d.name;
+  document.getElementById('driver-initials').textContent = d.initials;
+  // Job tab
+  document.getElementById('job-ref').textContent = d.booking.ref;
+  document.getElementById('job-route').textContent = d.booking.route;
+  document.getElementById('job-status').textContent = d.booking.status;
+  document.getElementById('job-cargo').textContent = d.booking.cargo;
+  document.getElementById('job-collection').textContent = d.booking.collection;
+  document.getElementById('job-collect-contact').textContent = 'Contact: ' + d.booking.collectContact;
+  document.getElementById('job-delivery').textContent = d.booking.delivery;
+  document.getElementById('job-delivery-contact').textContent = 'Contact: ' + d.booking.deliveryContact;
+  // Profile tab
+  document.getElementById('profile-avatar').textContent = d.initials;
+  document.getElementById('profile-name').textContent = d.name;
+  document.getElementById('profile-supplier').textContent = d.supplier;
+  document.getElementById('p-license').textContent = d.licenseNo;
+  document.getElementById('p-lictype').textContent = d.licenseType;
+  document.getElementById('p-licexp').textContent = d.licenseExpiry;
+  document.getElementById('p-vehicle').textContent = d.vehicleType + ' · ' + d.vehicleReg;
+  document.getElementById('p-phone').textContent = d.phone;
+  document.getElementById('p-rating').textContent = d.rating;
+  document.getElementById('p-ontime').textContent = d.ontime;
+  document.getElementById('p-deliveries').textContent = d.deliveries;
+  // Init GPS start pos
+  simLat = d.booking.startLat;
+  simLng = d.booking.startLng;
+}
+
+// ── GPS simulation ───────────────────────────────────────────────────────
+function startGPS() {
+  // Connect socket to main Flask-SocketIO server
+  try {
+    socket = io(window.location.origin);
+    socket.on('connect', () => console.log('Socket connected'));
+  } catch(e) { console.log('Socket not available in standalone mode'); }
+
+  gpsInterval = setInterval(() => {
+    if (!currentDriver) return;
+    const d = currentDriver;
+    const latStep = (d.booking.endLat - d.booking.startLat) / 500;
+    const lngStep = (d.booking.endLng - d.booking.startLng) / 500;
+    simLat += latStep + (Math.random()-0.5)*0.0003;
+    simLng += lngStep + (Math.random()-0.5)*0.0003;
+    simStep++;
+
+    const speed = Math.floor(80 + Math.random()*40);
+    const coords = `${simLat.toFixed(4)}, ${simLng.toFixed(4)}`;
+
+    document.getElementById('coord-display').textContent = coords;
+    document.getElementById('speed-display').textContent = speed + ' km/h';
+
+    const etaMins = Math.max(0, 262 - simStep);
+    const etaH = Math.floor(etaMins/60), etaM = etaMins%60;
+    document.getElementById('eta-display').textContent = `ETA: ~${etaH}h ${etaM}min`;
+
+    const log = document.getElementById('broadcast-log');
+    const time = new Date().toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    log.innerHTML = `<span style="color:#16a34a">[${time}]</span> ${coords} · ${speed}km/h\n` + log.innerHTML;
+
+    // Emit to server
+    if (socket && socket.connected) {
+      socket.emit('driver_location', {
+        driver_id: d.id, booking_ref: d.booking.ref,
+        lat: simLat, lng: simLng, speed: speed, timestamp: time
+      });
+    }
+  }, 3000);
+}
+
+// ── Clock ───────────────────────────────────────────────────────────────
+function startClock() {
+  const tick = () => {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  };
+  tick(); setInterval(tick, 30000);
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── Navigate ────────────────────────────────────────────────────────────
+function navigate(type) {
+  const d = currentDriver;
+  if (!d) return;
+  const dest = type === 'collection' ? d.booking.collection : d.booking.delivery;
+  alert('Opening Maps navigation to:\n' + dest + '\n\n(In production this opens Google Maps or Waze)');
+}
+
+// ── QR scan ─────────────────────────────────────────────────────────────
+function simulateScan(type) {
+  const d = currentDriver;
+  if (!d) return;
+  const msgs = {
+    collect: `✅ Collection confirmed for ${d.booking.ref}. Booking status updated to In Transit. Shipper and supplier notified.`,
+    deliver: `📦 Delivery confirmed for ${d.booking.ref}. Booking status updated to Delivered. Please capture POD photo.`,
+    pod: `📷 POD photo captured and uploaded to booking ${d.booking.ref}. Supplier and shipper can view it in the portal.`,
+  };
+  const result = document.getElementById('scan-result');
+  result.style.display = 'block';
+  result.style.background = '#dcfce7';
+  result.style.border = '1px solid #86efac';
+  result.style.borderRadius = '14px';
+  result.style.padding = '.8rem';
+  document.getElementById('scan-result-text').textContent = msgs[type];
+  document.getElementById('scan-result-text').style.color = '#166534';
+  if (socket && socket.connected) {
+    socket.emit('qr_scan', { driver_id: d.id, booking_ref: d.booking.ref, event: type });
+  }
+}
+
+// ── Assistance ──────────────────────────────────────────────────────────
+function reportIssue(type) {
+  const labels = {
+    flat_tyre: '🔧 Flat tyre reported. FreightFlow roadside assistance has been notified. Your supplier has been alerted. ETA for assistance: 45–90 minutes.',
+    breakdown: '🚨 Breakdown reported. Support team notified. Please move to a safe location. Your GPS location has been shared with the assistance team.',
+    accident: '⚠️ Incident reported. Emergency services may be required. FreightFlow support has been alerted with your GPS coordinates.',
+    fuel: '⛽ Fuel assistance requested. Your location has been shared. A fuel delivery partner will be dispatched.',
+    gate_refusal: '🚧 Gate refusal reported. Supplier and shipper have been notified. Support will contact the receiving depot on your behalf.',
+    cargo_issue: '📦 Cargo issue reported. Please do not leave the vehicle. Supplier and FreightFlow support have been notified.',
+  };
+  const el = document.getElementById('issue-sent');
+  el.style.display = 'block';
+  el.style.background = '#dcfce7';
+  el.style.border = '1px solid #86efac';
+  el.style.borderRadius = '14px';
+  el.style.padding = '.8rem';
+  document.getElementById('issue-sent-text').textContent = labels[type];
+  if (socket && socket.connected && currentDriver) {
+    socket.emit('driver_issue', { driver_id: currentDriver.id, type: type, lat: simLat, lng: simLng });
+  }
+}
+
+// ── Logout ───────────────────────────────────────────────────────────────
+function logout() {
+  clearInterval(gpsInterval);
+  if (socket) socket.disconnect();
+  currentDriver = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('l-phone').value = '';
+  document.getElementById('l-pin').value = '';
+}
+</script>
+</body>
+</html>

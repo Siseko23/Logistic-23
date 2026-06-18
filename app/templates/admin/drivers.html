@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Admin portal</p><h1>All drivers</h1><p class="topbar-copy">Platform-wide driver registry. Verify licenses, check compliance, and monitor driver ratings.</p></div></div>
+
+  <div class="stats-grid">
+    <article class="stat-card"><p class="stat-label">Total drivers</p><strong>{{ drivers|length }}</strong><p class="muted">Registered on platform</p></article>
+    <article class="stat-card"><p class="stat-label">Active</p><strong>{{ drivers | selectattr('status','equalto','Active') | list | length }}</strong><p class="muted">Cleared for assignments</p></article>
+    <article class="stat-card"><p class="stat-label">License expiring</p><strong>{{ drivers | selectattr('status','equalto','License Expiring') | list | length }}</strong><p class="muted" style="color:#c0392b">Action required</p></article>
+    <article class="stat-card"><p class="stat-label">Avg. driver rating</p><strong>{{ "%.1f"|format((drivers | sum(attribute='rating')) / drivers|length) }}/5</strong><p class="muted">Across all active drivers</p></article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Driver registry</h2></div>
+    <div class="table-like">
+      {% for d in drivers %}
+      {% set sup = suppliers | selectattr('id','equalto',d.supplierId) | first | default(None) %}
+      <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+        <div style="display:flex;align-items:center;gap:.8rem;flex:2;min-width:200px">
+          <div style="width:40px;height:40px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:600;color:#0C447C;flex-shrink:0">
+            {{ d.name.split()[0][0] }}{{ d.name.split()[-1][0] }}
+          </div>
+          <div>
+            <strong>{{ d.name }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.15rem 0 0">{{ d.supplierName }} · {{ d.vehicleReg }}</p>
+          </div>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <p>{{ d.licenseType }}</p>
+          <p style="font-size:.82rem;color:{% if d.status=='License Expiring' %}#c0392b{% else %}var(--muted){% endif %}">Exp. {{ d.licenseExpiry }}</p>
+        </div>
+        <div style="flex:1;min-width:110px">
+          <p>{{ d.totalDeliveries }} deliveries</p>
+          <p class="muted" style="font-size:.82rem">{{ d.onTimeRate }}% on-time</p>
+        </div>
+        <div style="flex:1;min-width:80px">
+          <strong>{{ d.rating }}/5</strong>
+          <p class="muted" style="font-size:.8rem">rating</p>
+        </div>
+        <span style="font-size:.75rem;font-weight:600;padding:.3rem .7rem;border-radius:999px;background:{% if d.status=='Active' %}rgba(47,108,87,.12){% elif d.status=='License Expiring' %}rgba(255,200,0,.18){% else %}rgba(192,57,43,.1){% endif %};color:{% if d.status=='Active' %}var(--green){% elif d.status=='License Expiring' %}#7a5800{% else %}#c0392b{% endif %}">{{ d.status }}</span>
+        <div style="display:flex;gap:.4rem">
+          <button class="ghost-button" style="padding:.4rem .8rem;font-size:.8rem" onclick="alert('Driver detail admin view — next sprint.')">Review</button>
+          {% if d.status == 'License Expiring' %}
+          <button class="ghost-button" style="padding:.4rem .8rem;font-size:.8rem;color:#c0392b;border-color:#c0392b" onclick="alert('Suspension notice sent to driver and supplier.')">Flag</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

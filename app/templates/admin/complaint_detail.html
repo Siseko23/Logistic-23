@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.action-panel{border:1px solid var(--line);border-radius:18px;padding:1.1rem 1.2rem;background:rgba(255,255,255,.6)}
+.action-panel h3{margin:0 0 .8rem;font-size:.95rem}
+.info-row{display:flex;justify-content:space-between;align-items:baseline;padding:.45rem 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.info-row:last-child{border-bottom:none}
+.info-row span{color:var(--muted)}
+</style>
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Complaints</p>
+      <h1>{{ complaint.ref }}</h1>
+      <p class="topbar-copy">{{ complaint.category }}
+        {% if complaint.booking %} · Booking {{ complaint.booking.ref }}{% endif %}
+        {% if complaint.supplier %} · {{ complaint.supplier.company_name }}{% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <span style="font-size:.78rem;font-weight:700;padding:.32rem .85rem;border-radius:999px;background:{{ complaint.status_color }}18;color:{{ complaint.status_color }}">
+        {{ complaint.status }}
+      </span>
+      <a href="{{ url_for('admin.complaints') }}" class="ghost-button">← Back</a>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- Left: complaint detail + actions -->
+    <div class="stack">
+
+      <!-- Original complaint -->
+      <section class="panel">
+        <div class="panel-head"><h2>Shipper's complaint</h2></div>
+        <div style="background:rgba(244,249,255,.8);border:1px solid var(--line);border-radius:14px;padding:1rem;line-height:1.6;font-size:.92rem">
+          {{ complaint.description }}
+        </div>
+        {% if complaint.evidence_files %}
+        <div style="margin-top:.7rem">
+          <p style="font-size:.82rem;font-weight:600;margin:0 0 .4rem">Attached evidence:</p>
+          {% for f in complaint.evidence_files.split(',') %}
+          <p style="font-size:.82rem;color:var(--accent);margin:.2rem 0">📎 {{ f.strip() }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <p class="muted" style="font-size:.8rem;margin:.7rem 0 0">
+          Filed by <strong>{{ complaint.shipper.company_name or complaint.shipper.user.full_name }}</strong>
+          on {{ complaint.created_at.strftime('%d %b %Y at %H:%M') }}
+          · Priority: <strong style="color:{% if complaint.priority=='Critical' %}#9b1c1c{% elif complaint.priority=='Urgent' %}#7a5800{% else %}var(--accent){% endif %}">{{ complaint.priority }}</strong>
+        </p>
+      </section>
+
+      <!-- Supplier response (if any) -->
+      {% if complaint.supplier_response %}
+      <section class="panel">
+        <div class="panel-head"><h2>Supplier response</h2></div>
+        <div style="background:rgba(126,34,206,.05);border:1px solid rgba(126,34,206,.18);border-radius:14px;padding:1rem;line-height:1.6;font-size:.92rem">
+          {{ complaint.supplier_response }}
+        </div>
+        <p class="muted" style="font-size:.8rem;margin:.6rem 0 0">
+          Responded {{ complaint.supplier_responded_at.strftime('%d %b %Y at %H:%M') if complaint.supplier_responded_at else '—' }}
+        </p>
+      </section>
+      {% endif %}
+
+      <!-- ── ACTION 1: Save admin notes / mark under review ── -->
+      {% if complaint.status not in ('Resolved', 'Closed') %}
+      <div class="action-panel">
+        <h3>📝 Admin notes <span class="muted" style="font-size:.8rem;font-weight:400">(internal — not visible to shipper or supplier)</span></h3>
+        <form method="POST">
+          <textarea name="admin_notes" rows="4" placeholder="Document your review findings, decisions, or reasons for forwarding / not forwarding…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:.7rem;font-size:.88rem;background:rgba(255,255,255,.8);resize:vertical">{{ complaint.admin_notes or '' }}</textarea>
+          <input type="hidden" name="action" value="update_notes"/>
+          <button type="submit" class="secondary-button" style="margin-top:.6rem">Save notes</button>
+        </form>
+      </div>
+
+      <!-- ── ACTION 2: Forward to supplier ── -->
+      {% if complaint.status not in ('Forwarded to Supplier', 'Supplier Responded') and complaint.supplier %}
+      <div class="action-panel" style="border-color:rgba(126,34,206,.25);background:rgba(126,34,206,.03)">
+        <h3 style="color:#7e22ce">✉ Forward complaint to supplier</h3>
+        <p class="muted" style="font-size:.85rem;margin:0 0 .8rem">
+          The supplier will be notified and asked to respond within 4 hours.
+          They will see the complaint description and category — <strong>not</strong> your internal notes.
+        </p>
+        <form method="POST" onsubmit="return confirm('Forward this complaint to {{ complaint.supplier.company_name }}? They will be notified immediately.')">
+          <textarea name="admin_notes" rows="3" placeholder="Optional: update your internal notes before forwarding…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:.7rem;font-size:.88rem;background:rgba(255,255,255,.8);resize:vertical">{{ complaint.admin_notes or '' }}</textarea>
+          <input type="hidden" name="action" value="forward"/>
+          <button type="submit" class="primary-button" style="margin-top:.6rem;background:#7e22ce">
+            Forward to {{ complaint.supplier.company_name }} →
+          </button>
+        </form>
+      </div>
+      {% elif not complaint.supplier %}
+      <div style="background:rgba(122,88,0,.06);border:1px solid rgba(122,88,0,.18);border-radius:14px;padding:.9rem">
+        <p style="margin:0;font-size:.85rem;color:#7a5800">⚠ No supplier linked to this complaint — cannot forward. Link a booking or update manually.</p>
+      </div>
+      {% endif %}
+
+      <!-- ── ACTION 3: Resolve ── -->
+      {% if complaint.status in ('Forwarded to Supplier','Supplier Responded','Under Admin Review') %}
+      <div class="action-panel" style="border-color:rgba(47,108,87,.25);background:rgba(47,108,87,.03)">
+        <h3 style="color:var(--green)">✅ Resolve complaint</h3>
+        <form method="POST">
+          <textarea name="resolution_notes" rows="3" placeholder="Describe the resolution outcome — this will be shown to the shipper…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:.7rem;font-size:.88rem;background:rgba(255,255,255,.8);resize:vertical" required></textarea>
+          <input type="hidden" name="action" value="resolve"/>
+          <button type="submit" class="primary-button" style="margin-top:.6rem">Mark as resolved</button>
+        </form>
+      </div>
+      {% endif %}
+
+      <!-- ── ACTION 4: Close without resolution ── -->
+      <div class="action-panel" style="border-color:rgba(107,114,128,.2)">
+        <h3 style="color:#374151">🔒 Close complaint</h3>
+        <p class="muted" style="font-size:.83rem;margin:0 0 .8rem">Close without further action (e.g. duplicate, withdrawn, or no merit found).</p>
+        <form method="POST" onsubmit="return confirm('Close this complaint? This cannot be undone.')">
+          <input type="hidden" name="action" value="close"/>
+          <button type="submit" class="ghost-button">Close complaint</button>
+        </form>
+      </div>
+      {% endif %}
+
+      <!-- Resolved state -->
+      {% if complaint.status in ('Resolved','Closed') %}
+      <div style="background:rgba(47,108,87,.07);border:1px solid rgba(47,108,87,.2);border-radius:16px;padding:1.1rem;text-align:center">
+        <p style="margin:0;color:var(--green);font-weight:600;font-size:1rem">
+          {% if complaint.status=='Resolved' %}✅ Complaint resolved{% else %}🔒 Complaint closed{% endif %}
+        </p>
+        {% if complaint.resolution_notes %}<p style="font-size:.88rem;margin:.4rem 0 0">{{ complaint.resolution_notes }}</p>{% endif %}
+        {% if complaint.resolved_at %}<p class="muted" style="font-size:.8rem;margin:.3rem 0 0">{{ complaint.resolved_at.strftime('%d %b %Y at %H:%M') }}</p>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: meta sidebar -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Details</h2></div>
+        <div>
+          <div class="info-row"><span>Reference</span><strong>{{ complaint.ref }}</strong></div>
+          <div class="info-row"><span>Category</span><strong>{{ complaint.category }}</strong></div>
+          <div class="info-row"><span>Priority</span>
+            <strong style="color:{% if complaint.priority=='Critical' %}#9b1c1c{% elif complaint.priority=='Urgent' %}#7a5800{% else %}var(--accent){% endif %}">{{ complaint.priority }}</strong>
+          </div>
+          <div class="info-row"><span>Status</span><strong style="color:{{ complaint.status_color }}">{{ complaint.status }}</strong></div>
+          <div class="info-row"><span>Submitted</span><strong>{{ complaint.created_at.strftime('%d %b %Y, %H:%M') }}</strong></div>
+          {% if complaint.forwarded_at %}
+          <div class="info-row"><span>Forwarded</span><strong>{{ complaint.forwarded_at.strftime('%d %b %Y, %H:%M') }}</strong></div>
+          {% endif %}
+          {% if complaint.supplier_responded_at %}
+          <div class="info-row"><span>Supplier responded</span><strong>{{ complaint.supplier_responded_at.strftime('%d %b %Y, %H:%M') }}</strong></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Shipper</h2></div>
+        <div class="info-row"><span>Company</span><strong>{{ complaint.shipper.company_name or '—' }}</strong></div>
+        <div class="info-row"><span>Email</span><strong>{{ complaint.shipper.user.email }}</strong></div>
+        <div class="info-row"><span>Phone</span><strong>{{ complaint.shipper.user.phone or '—' }}</strong></div>
+      </section>
+
+      {% if complaint.supplier %}
+      <section class="panel">
+        <div class="panel-head"><h2>Supplier</h2></div>
+        <div class="info-row"><span>Company</span><strong>{{ complaint.supplier.company_name }}</strong></div>
+        <div class="info-row"><span>Email</span><strong>{{ complaint.supplier.user.email }}</strong></div>
+        <div class="info-row"><span>Score</span><strong>{{ complaint.supplier.score }}/5</strong></div>
+        <div class="info-row"><span>Status</span><strong>{{ complaint.supplier.status }}</strong></div>
+      </section>
+      {% endif %}
+
+      {% if complaint.booking %}
+      <section class="panel">
+        <div class="panel-head"><h2>Linked booking</h2></div>
+        <div class="info-row"><span>Ref</span><strong>{{ complaint.booking.ref }}</strong></div>
+        <div class="info-row"><span>Route</span><strong>{{ complaint.booking.route }}</strong></div>
+        <div class="info-row"><span>Status</span><strong>{{ complaint.booking.status }}</strong></div>
+        <div class="info-row"><span>Value</span><strong>R {{ '{:,.0f}'.format(complaint.booking.quoted_value or 0) }}</strong></div>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

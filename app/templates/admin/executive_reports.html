@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .report-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:1.2rem 1.4rem;display:flex;align-items:center;gap:1rem;transition:box-shadow .2s}
+  .report-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+  .report-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+  .icon-monthly{background:rgba(21,95,160,.12)}
+  .icon-supplier{background:rgba(39,174,96,.12)}
+  .icon-analytics{background:rgba(142,68,173,.12)}
+  .icon-financial{background:rgba(230,126,34,.12)}
+  .export-btn{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:.35rem .8rem;font-size:.8rem;cursor:pointer;transition:background .15s}
+  .export-btn:hover{background:rgba(21,95,160,.08);border-color:var(--accent)}
+  .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;background:linear-gradient(135deg,rgba(21,95,160,.09),rgba(21,95,160,.03));border:1px solid rgba(21,95,160,.15);border-radius:18px;padding:1.2rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal · Executive</p>
+      <h1>📋 Executive Reporting Centre</h1>
+      <p class="topbar-copy">Generate and export platform-wide management reports. PDF, Excel, and CSV formats available.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('admin.marketplace') }}" class="ghost-button">📊 Marketplace</a>
+      <a href="{{ '#' }}" class="primary-button">⬇ Export Excel</a>
+    </div>
+  </div>
+
+  <!-- KPI summary -->
+  <div class="kpi-strip">
+    <div style="text-align:center">
+      <p class="eyebrow" style="margin-bottom:.3rem">Platform revenue</p>
+      <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ zar(total_revenue) }}</strong>
+      <p class="small-note">Active bookings</p>
+    </div>
+    <div style="text-align:center">
+      <p class="eyebrow" style="margin-bottom:.3rem">Platform fees earned</p>
+      <strong style="font-size:1.8rem;color:#27ae60">{{ zar(platform_fee_total) }}</strong>
+      <p class="small-note">After supplier payouts</p>
+    </div>
+    <div style="text-align:center">
+      <p class="eyebrow" style="margin-bottom:.3rem">Supplier payouts</p>
+      <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ zar(supplier_payouts) }}</strong>
+      <p class="small-note">Net payable</p>
+    </div>
+    <div style="text-align:center">
+      <p class="eyebrow" style="margin-bottom:.3rem">Total bookings</p>
+      <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ total_bookings }}</strong>
+      <p class="small-note">This period</p>
+    </div>
+  </div>
+
+  <!-- Report library -->
+  <div>
+    <h2 style="margin-bottom:1rem">Report library</h2>
+    <div class="stack" style="gap:.7rem">
+      {% for r in reports %}
+      {% set icon_type = r.type %}
+      <div class="report-card">
+        <div class="report-icon icon-{{ r.type }}">
+          {% if r.type == 'monthly' %}📅
+          {% elif r.type == 'supplier' %}🏢
+          {% elif r.type == 'analytics' %}📊
+          {% else %}💰{% endif %}
+        </div>
+        <div style="flex:1">
+          <strong style="font-size:.97rem">{{ r.title }}</strong>
+          <p class="small-note" style="margin:.2rem 0 0">Generated: {{ r.generated }} · {{ r.size }}</p>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-shrink:0;flex-wrap:wrap">
+          <button class="export-btn" onclick="alert('Downloading PDF...')">⬇ PDF</button>
+          <button class="export-btn" onclick="alert('Downloading Excel...')">⬇ Excel</button>
+          <button class="export-btn" onclick="alert('Downloading CSV...')">⬇ CSV</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Generate new report -->
+  <div class="stat-card" style="padding:1.4rem">
+    <h3 style="margin-bottom:.8rem">Generate new report</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.8rem;align-items:end">
+      <div>
+        <label class="small-note" style="display:block;margin-bottom:.3rem">Report type</label>
+        <select style="width:100%;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;background:var(--bg);font-size:.9rem">
+          <option>Monthly logistics report</option>
+          <option>Supplier performance report</option>
+          <option>Booking analytics report</option>
+          <option>Financial summary report</option>
+        </select>
+      </div>
+      <div>
+        <label class="small-note" style="display:block;margin-bottom:.3rem">Period from</label>
+        <input type="date" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;background:var(--bg);font-size:.9rem">
+      </div>
+      <div>
+        <label class="small-note" style="display:block;margin-bottom:.3rem">Period to</label>
+        <input type="date" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;background:var(--bg);font-size:.9rem">
+      </div>
+      <button onclick="alert('Report generated — downloading...')" class="primary-button">Generate →</button>
+    </div>
+  </div>
+
+  <!-- Scheduled reports -->
+  <div class="stat-card" style="padding:1.4rem">
+    <h3 style="margin-bottom:.8rem">Scheduled reports</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem">
+      <div style="border:1px solid var(--line);border-radius:12px;padding:.9rem">
+        <p class="eyebrow" style="margin-bottom:.3rem">Monthly logistics report</p>
+        <strong>1st of every month</strong>
+        <p class="small-note" style="margin:.2rem 0 0">Sent to ops@movement.com</p>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:.9rem">
+        <p class="eyebrow" style="margin-bottom:.3rem">Supplier performance</p>
+        <strong>Every Monday 07:00</strong>
+        <p class="small-note" style="margin:.2rem 0 0">Sent to sipho@movement.com</p>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:.9rem">
+        <p class="eyebrow" style="margin-bottom:.3rem">Financial summary</p>
+        <strong>Last day of month</strong>
+        <p class="small-note" style="margin:.2rem 0 0">Sent to finance team</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

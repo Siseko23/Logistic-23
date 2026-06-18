@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Admin portal</p><h1>Reports &amp; transactions</h1><p class="topbar-copy">Platform fee collection, payment visibility, and downloadable monthly Excel reports.</p></div></div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Monthly Excel export</h2><p>Download a full supplier payout spreadsheet for any month. One tab per supplier, plus a summary sheet.</p></div>
+    <form method="GET" action="{{ '#' }}" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
+      <label style="display:grid;gap:.35rem;font-weight:600;flex:1;min-width:160px">
+        Month
+        <input type="month" name="month" value="{{ current_month }}" style="border-radius:12px;border:1px solid rgba(56,45,28,.16);padding:.7rem .85rem;background:rgba(255,255,255,.93)"/>
+      </label>
+      <label style="display:grid;gap:.35rem;font-weight:600;flex:1;min-width:160px">
+        Supplier (optional)
+        <select name="supplier_id" style="border-radius:12px;border:1px solid rgba(56,45,28,.16);padding:.7rem .85rem;background:rgba(255,255,255,.93)">
+          <option value="">All suppliers</option>
+          {% for s in suppliers %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="primary-button" style="height:44px;align-self:end">⬇ Download Excel</button>
+    </form>
+
+    <div style="margin-top:.8rem;background:rgba(47,108,87,.06);border-radius:14px;padding:.8rem;border:1px solid rgba(47,108,87,.15)">
+      <p style="margin:0;font-size:.85rem;color:var(--muted)">The Excel file includes: booking reference, route, shipper, gross amount, platform fee ({{ platform_fee_pct }}%), net payout, and payment status. One sheet per supplier, plus a summary sheet for total platform revenue.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+      <div><h2>Export filters</h2></div>
+      <div class="button-row">
+        <a href="{{ '#' }}?month={{ current_month }}" class="ghost-button">⬇ All suppliers this month</a>
+      </div>
+    </div>
+    <div class="form-grid compact" style="margin-bottom:1rem">
+      <label>From date<input type="date" name="from" value="{{ from_date }}"/></label>
+      <label>To date<input type="date" name="to" value="{{ to_date }}"/></label>
+      <label>Output<input value="Excel / CSV report" readonly/></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Transaction ledger</h2></div>
+    <div class="table-like">
+      {% for t in transactions %}
+      <div class="table-row">
+        <div>
+          <strong>{{ t.id }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ t.bookingRef }}</p>
+        </div>
+        <div>
+          <p>{{ t.shipper }}</p>
+          <p class="muted">{{ t.method }}</p>
+        </div>
+        <div style="text-align:right">
+          <p><strong>{{ zar(t.amount) }}</strong></p>
+          <p class="muted" style="font-size:.8rem">Commission: {{ zar(t.amount * platform_fee_pct / 100) }}</p>
+          <p style="font-size:.8rem;color:var(--green)">Net to supplier: {{ zar(t.amount * (1 - platform_fee_pct/100)) }}</p>
+        </div>
+        <span class="pill {% if t.status=='Settled' %}badge{% endif %}">{{ t.status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

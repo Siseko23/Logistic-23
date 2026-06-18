@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Supplier portal</p><h1>Supplier profile &amp; compliance</h1><p class="topbar-copy">Profile, routes, and document readiness for admin review.</p></div></div>
+  <section class="panel">
+    <div class="panel-head"><h2>Profile &amp; compliance</h2></div>
+    <form method="POST">
+      <div class="form-grid">
+        <label>Company name<input name="companyName" value="Kopano Linehaul" placeholder="Enter supplier company name"/></label>
+        <label>Contact person<input name="contactName" value="Thabo Nkosi" placeholder="Enter contact person"/></label>
+        <label>Email address<input name="email" value="thabo@kopano-linehaul.co.za" placeholder="name@company.com"/></label>
+        <label>Phone number<input name="phone" value="+27 31 555 0844" placeholder="+27 xx xxx xxxx"/></label>
+        <label>Operating regions<input name="operatingRegions" value="Durban, Johannesburg" list="sa-regions" placeholder="e.g. Johannesburg, Durban"/></label>
+        <label>Operating routes<input name="operatingRoutes" value="Durban → Johannesburg" list="sa-major-routes" placeholder="e.g. Durban → Johannesburg"/></label>
+        <label>Insurance certificate<input name="insuranceCertificate" value="Verified — expires Dec 2026" placeholder="Document status"/></label>
+        <label>Roadworthy certificates<input name="roadworthyCertificates" value="All vehicles current" placeholder="Certificate status"/></label>
+        <label>Operator permit<input name="operatorPermit" value="Cross-border permit active" placeholder="Permit status"/></label>
+        <label>Account status<input value="Approved &amp; active" readonly/></label>
+        <label>Base of operations (city/suburb) <span style="font-size:.72rem;background:var(--accent);color:#fff;padding:.15rem .5rem;border-radius:999px;font-weight:700">NEW v3.0</span>
+          <input name="baseOfOperations" value="Durban — KZN" list="sa-regions" placeholder="e.g. Durban — KZN"/>
+          <small class="muted">Used by the AI proximity filter — suppliers too far from pickup are excluded</small>
+        </label>
+        <label>GPS coordinates (optional)
+          <input name="baseGPS" value="-29.858, 31.021" placeholder="lat, lng"/>
+          <small class="muted">Enter if you know your precise depot coordinates for more accurate proximity scoring</small>
+        </label>
+      </div>
+      <datalist id="sa-regions">{% for c in cities %}<option value="{{ c }}">{% endfor %}</datalist>
+      <datalist id="sa-major-routes">
+        {% for r in ['Durban → Johannesburg','Johannesburg → Cape Town','Cape Town → Gqeberha','Johannesburg → Polokwane','Durban → Bloemfontein'] %}
+        <option value="{{ r }}">{% endfor %}
+      </datalist>
+      <button type="submit" class="primary-button wide-button">Save supplier profile</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

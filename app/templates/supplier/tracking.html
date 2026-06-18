@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+.driver-track-card{background:#fff;border:1.5px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:.8rem}
+.dtc-header{padding:.8rem 1rem;background:rgba(21,95,160,.06);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.dtc-body{padding:.8rem 1rem}
+.mini-map{height:160px;border-radius:12px;background:linear-gradient(135deg,#c7d2fe,#a5f3fc);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:.6rem}
+.live-pin{font-size:1.6rem;animation:bounce .8s ease-in-out infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+.live-badge{display:inline-flex;align-items:center;gap:.4rem;background:#16a34a;color:#fff;border-radius:999px;padding:.25rem .7rem;font-size:.72rem;font-weight:700}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.inactive-badge{display:inline-flex;align-items:center;gap:.4rem;background:#f1f5f9;color:var(--muted);border-radius:999px;padding:.25rem .7rem;font-size:.72rem;font-weight:700}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Driver tracking</h1>
+      <p class="topbar-copy">Live GPS location of all your active drivers. Location updates every 3 seconds while a driver has an active booking.</p>
+    </div>
+    <span class="live-badge" style="align-self:flex-start;margin-top:.5rem"><span class="live-dot"></span>{{ active_count }} LIVE</span>
+  </div>
+
+  {% for d in drivers %}
+  {% set b = d.active_booking %}
+  <div class="driver-track-card" id="card-{{ d.id }}">
+    <div class="dtc-header">
+      <div style="display:flex;align-items:center;gap:.8rem">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:.88rem;flex-shrink:0">
+          {{ d.name.split()[0][0] }}{{ d.name.split()[-1][0] }}
+        </div>
+        <div>
+          <strong>{{ d.name }}</strong>
+          <p class="muted" style="font-size:.8rem;margin:.1rem 0 0">{{ d.vehicleType }} · {{ d.vehicleReg }}</p>
+        </div>
+      </div>
+      {% if b %}
+      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+      {% else %}
+      <span class="inactive-badge">No active booking</span>
+      {% endif %}
+    </div>
+
+    <div class="dtc-body">
+      {% if b %}
+      <div style="display:flex;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">
+          <p style="font-size:.75rem;color:var(--muted);margin-bottom:.1rem">Active booking</p>
+          <strong style="font-size:.88rem">{{ b.ref }}</strong>
+          <p style="font-size:.82rem;color:var(--accent);margin:.1rem 0 0">{{ b.route }}</p>
+        </div>
+        <div style="text-align:right">
+          <p style="font-size:.75rem;color:var(--muted);margin-bottom:.1rem">Coordinates</p>
+          <strong style="font-size:.82rem;font-family:monospace" id="coord-{{ d.id }}">Awaiting signal…</strong>
+          <p style="font-size:.78rem;color:var(--muted);margin:.1rem 0 0" id="speed-{{ d.id }}">Speed: —</p>
+          <p style="font-size:.78rem;color:var(--green);margin:.1rem 0 0" id="eta-{{ d.id }}">ETA: calculating…</p>
+        </div>
+      </div>
+
+      <div class="mini-map">
+        <div style="text-align:center">
+          <div class="live-pin">🚛</div>
+          <p style="font-size:.75rem;color:var(--navy);font-weight:600" id="maplabel-{{ d.id }}">{{ b.route }}</p>
+        </div>
+        <div style="position:absolute;bottom:.5rem;right:.6rem;background:rgba(18,37,63,.75);color:#fff;border-radius:8px;padding:.2rem .5rem;font-size:.7rem" id="mapeta-{{ d.id }}">Live</div>
+      </div>
+
+      <a href="{{ url_for('shipper.bookings', ref=b.ref) }}" class="ghost-button" style="padding:.45rem 1rem;font-size:.82rem">Full tracking view →</a>
+      {% else %}
+      <p class="muted" style="padding:.3rem 0">Driver has no active booking. Location sharing is inactive.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const socket = io();
+socket.on('connect', () => {
+  {% for d in drivers %}{% if d.active_booking %}
+  socket.emit('subscribe_tracking', { booking_ref: '{{ d.active_booking.ref }}' });
+  {% endif %}{% endfor %}
+});
+socket.on('location_update', data => {
+  const driverId = data.driver_id;
+  const c = document.getElementById('coord-' + driverId);
+  const s = document.getElementById('speed-' + driverId);
+  const e = document.getElementById('eta-' + driverId);
+  const me = document.getElementById('mapeta-' + driverId);
+  if (c) c.textContent = `${parseFloat(data.lat).toFixed(4)}, ${parseFloat(data.lng).toFixed(4)}`;
+  if (s) s.textContent = `Speed: ${data.speed} km/h`;
+  if (e) e.textContent = `ETA: ${data.eta || '—'}`;
+  if (me) me.textContent = `${data.speed}km/h`;
+});
+</script>
+{% endblock %}

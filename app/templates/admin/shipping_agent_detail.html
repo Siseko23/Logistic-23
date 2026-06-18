@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · <a href="{{ '#' }}" style="color:var(--accent);text-decoration:none">Shipping agents</a> · {{ agent.id }}</p>
+      <h1>{{ agent.company }}</h1>
+      <p class="topbar-copy">{{ agent.city }} &middot; Contact: {{ agent.contactName }} &middot; Registered {{ agent.registeredAt }}</p>
+    </div>
+    <div style="align-self:flex-start;margin-top:.5rem;display:flex;gap:.6rem;flex-wrap:wrap">
+      {% if agent.status == 'Pending approval' %}
+      <form method="POST" action="{{ '#' }}" style="margin:0">
+        <button type="submit" class="primary-button">✅ Approve agent</button>
+      </form>
+      {% elif agent.status == 'Active' %}
+      <form method="POST" action="{{ '#' }}" style="margin:0">
+        <button type="submit" class="primary-button" style="background:rgba(155,28,28,.1);color:#9b1c1c;border:1px solid rgba(155,28,28,.2)">Suspend</button>
+      </form>
+      {% elif agent.status == 'Suspended' %}
+      <form method="POST" action="{{ '#' }}" style="margin:0">
+        <button type="submit" class="primary-button">Reinstate</button>
+      </form>
+      {% endif %}
+      <span class="pill {% if agent.status=='Active' %}badge{% endif %}"
+        style="align-self:center;{% if agent.status=='Pending approval' %}background:rgba(255,200,0,.2);color:#7a5800{% elif agent.status=='Suspended' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+        {{ agent.status }}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- Left: containers + cargo units -->
+    <div class="stack">
+
+      <!-- Containers -->
+      <section class="panel">
+        <div class="panel-head"><h2>🚢 Containers</h2><p>{{ agent.containers|length }} types on offer</p></div>
+        {% if agent.containers %}
+        <div class="stack" style="gap:.7rem">
+          {% for c in agent.containers %}
+          <div style="border:1px solid var(--line);border-radius:14px;padding:.9rem 1.1rem;display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1;min-width:150px">
+              <strong style="font-size:.95rem">{{ c.type }}</strong>
+              <p class="muted" style="font-size:.78rem;margin:.2rem 0 0">{{ c.teu }} TEU &middot; Max {{ "{:,.0f}".format(c.maxPayloadKg) }} kg (SA road) &middot; {{ c.cbm }} CBM</p>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p style="margin:0;font-size:.9rem"><strong style="color:var(--accent-dark)">{{ c.available }}</strong> available</p>
+              <p class="muted" style="font-size:.78rem;margin:.15rem 0 0">R {{ "{:,.0f}".format(c.dailyRateR) }}/day</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted" style="font-size:.85rem">No containers listed yet.</p>
+        {% endif %}
+      </section>
+
+      <!-- Pallets & Boxes -->
+      <section class="panel">
+        <div class="panel-head"><h2>📦 Pallets &amp; boxes</h2><p>{{ agent.units|length }} unit types</p></div>
+        {% if agent.units %}
+        <div class="stack" style="gap:.7rem">
+          {% for u in agent.units %}
+          <div style="border:1px solid var(--line);border-radius:14px;padding:.9rem 1.1rem;display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex-shrink:0;font-size:1.4rem">
+              {% if 'Pallet' in u.type %}🟫{% else %}📦{% endif %}
+            </div>
+            <div style="flex:1;min-width:140px">
+              <strong style="font-size:.92rem">{{ u.type }}</strong>
+              <p class="muted" style="font-size:.78rem;margin:.2rem 0 0">{{ u.dims }} &middot; Max {{ u.maxKg }} kg</p>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p style="margin:0;font-size:.9rem"><strong style="color:var(--accent-dark)">{{ u.available }}</strong> available</p>
+              <p class="muted" style="font-size:.78rem;margin:.15rem 0 0">R {{ "{:,.0f}".format(u.ratePerUnitR) }}/unit</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted" style="font-size:.85rem">No cargo units listed yet.</p>
+        {% endif %}
+      </section>
+
+    </div>
+
+    <!-- Right: company details + services -->
+    <div class="stack">
+
+      <section class="panel">
+        <div class="panel-head"><h2>Company details</h2></div>
+        <div class="stack" style="gap:.35rem">
+          <div class="summary-row"><span>Agent ID</span><strong>{{ agent.id }}</strong></div>
+          <div class="summary-row"><span>Company</span><strong>{{ agent.company }}</strong></div>
+          <div class="summary-row"><span>Contact person</span><strong>{{ agent.contactName }}</strong></div>
+          <div class="summary-row"><span>Email</span><strong>{{ agent.email }}</strong></div>
+          <div class="summary-row"><span>Phone</span><strong>{{ agent.phone }}</strong></div>
+          <div class="summary-row"><span>City</span><strong>{{ agent.city }}</strong></div>
+          <div class="summary-row"><span>VAT number</span>
+            {% if agent.vatNo %}<strong>{{ agent.vatNo }}</strong>{% else %}<span class="muted">Not provided</span>{% endif %}
+          </div>
+          <div class="summary-row"><span>Registered</span><strong>{{ agent.registeredAt }}</strong></div>
+          <div class="summary-row"><span>Status</span>
+            <span class="pill {% if agent.status=='Active' %}badge{% endif %}"
+              style="{% if agent.status=='Pending approval' %}background:rgba(255,200,0,.2);color:#7a5800{% elif agent.status=='Suspended' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+              {{ agent.status }}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Services offered</h2></div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+          {% for s in agent.services %}
+          <span style="background:rgba(47,108,87,.1);color:var(--accent-dark);border-radius:8px;padding:.35rem .85rem;font-size:.85rem;font-weight:600">{{ s }}</span>
+          {% endfor %}
+        </div>
+        <div style="margin-top:1rem;font-size:.82rem;color:var(--muted);line-height:1.6">
+          <p style="margin:0 0 .3rem"><strong style="color:var(--text)">FCL</strong> — Full Container Load: entire container for one shipper</p>
+          <p style="margin:0 0 .3rem"><strong style="color:var(--text)">LCL</strong> — Less than Container Load: shared container space</p>
+          <p style="margin:0 0 .3rem"><strong style="color:var(--text)">Groupage</strong> — Consolidating multiple small shipments</p>
+          <p style="margin:0 0 .3rem"><strong style="color:var(--text)">Airfreight</strong> — Air cargo pallets and priority shipments</p>
+          <p style="margin:0"><strong style="color:var(--text)">Break Bulk</strong> — Non-containerised cargo shipped individually</p>
+        </div>
+      </section>
+
+      {% if agent.status == 'Pending approval' %}
+      <section class="panel" style="background:rgba(255,200,0,.07);border:1px solid rgba(255,200,0,.3)">
+        <div class="panel-head"><h2>⚠️ Approval required</h2></div>
+        <p class="muted" style="font-size:.85rem;margin:0 0 .8rem">This shipping agent is awaiting admin approval before they can be visible to shippers and suppliers on the platform.</p>
+        <p class="muted" style="font-size:.82rem;margin:0">Before approving, verify: company registration, VAT number (if applicable), contact details, and that container / unit rates are competitive and accurate.</p>
+        <form method="POST" action="{{ '#' }}" style="margin-top:1rem">
+          <button type="submit" class="primary-button" style="width:100%">✅ Approve and activate</button>
+        </form>
+      </section>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

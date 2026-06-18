@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .score-bar-wrap{background:rgba(21,95,160,.1);border-radius:999px;height:8px;overflow:hidden;margin:.3rem 0;min-width:80px}
+  .score-bar{height:100%;border-radius:999px}
+  .score-bar.high{background:var(--green)}
+  .score-bar.mid{background:#e8a000}
+  .score-bar.low{background:#c0392b}
+  .score-badge{font-size:.82rem;font-weight:700;padding:.25rem .65rem;border-radius:999px}
+  .score-badge.high{background:rgba(47,108,87,.12);color:var(--green)}
+  .score-badge.mid{background:rgba(232,160,0,.15);color:#7a5800}
+  .score-badge.low{background:rgba(192,57,43,.12);color:#c0392b}
+  .status-chip{font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:999px}
+  .status-chip.active{background:rgba(47,108,87,.12);color:var(--green)}
+  .status-chip.risk{background:rgba(192,57,43,.1);color:#c0392b}
+  .hist-mini{font-size:.78rem;color:var(--muted)}
+  .impact-pos{color:var(--green);font-weight:600}
+  .impact-neg{color:#c0392b;font-weight:600}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal</p>
+      <h1>Supplier performance</h1>
+      <p class="topbar-copy">Rolling performance scores for all suppliers. Scores below {{ min_score }} are automatically excluded from AI selection.</p>
+    </div>
+    <div style="flex-shrink:0">
+      <span style="font-size:.85rem;color:var(--muted)">Min AI threshold: <strong>{{ min_score }} / 5.0</strong></span>
+    </div>
+  </div>
+
+  <!-- At-risk suppliers alert -->
+  {% set at_risk = suppliers|selectattr('score','lt', min_score)|list %}
+  {% if at_risk %}
+  <div style="background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.25);border-radius:16px;padding:1rem 1.2rem;color:#c0392b">
+    <strong>⚠ {{ at_risk|length }} supplier{{ 's' if at_risk|length > 1 else '' }} below minimum threshold</strong> —
+    {% for s in at_risk %}{{ s.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+    are currently excluded from AI supplier selection.
+  </div>
+  {% endif %}
+
+  <!-- Summary stats -->
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:1rem">
+    <div class="stat-card">
+      <p class="stat-label">Total suppliers</p>
+      <strong>{{ suppliers|length }}</strong>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Active in AI engine</p>
+      <strong style="color:var(--green)">{{ suppliers|selectattr('score','ge', min_score)|list|length }}</strong>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">At risk / excluded</p>
+      <strong style="color:#c0392b">{{ at_risk|length }}</strong>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Avg score (all)</p>
+      {% set avg = (suppliers|sum(attribute='score') / suppliers|length)|round(2) %}
+      <strong>{{ avg }} / 5.0</strong>
+    </div>
+  </div>
+
+  <!-- Supplier score cards -->
+  <section class="panel">
+    <div class="panel-head"><h2>All supplier scores</h2><p>Sorted by score descending. Click a row to view event history.</p></div>
+
+    {% for s in suppliers|sort(attribute='score', reverse=True) %}
+    {% set is_risk = s.score < min_score %}
+    {% set score_class = 'high' if s.score >= 4 else 'mid' if s.score >= min_score else 'low' %}
+    <div style="border:1px solid {{ 'rgba(192,57,43,.25)' if is_risk else 'var(--line)' }};border-radius:18px;padding:1rem;background:{{ 'rgba(192,57,43,.02)' if is_risk else 'rgba(255,255,255,.5)' }};margin-bottom:.8rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.8rem">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.3rem">
+            <strong style="font-size:1.05rem">{{ s.name }}</strong>
+            <span class="status-chip {{ 'risk' if is_risk else 'active' }}">{{ '⚠ At risk' if is_risk else '✓ Active' }}</span>
+            <span class="score-badge {{ score_class }}">★ {{ s.score }}</span>
+          </div>
+          <div style="font-size:.84rem;color:var(--muted)">{{ s.id }} &nbsp;·&nbsp; Base: {{ s.baseCity }}</div>
+          <div class="score-bar-wrap" style="max-width:200px;margin-top:.5rem">
+            <div class="score-bar {{ score_class }}" style="width:{{ (s.score / 5 * 100)|round|int }}%"></div>
+          </div>
+        </div>
+
+        <!-- Score breakdown from history -->
+        <div style="min-width:200px">
+          {% set history = score_history.get(s.id, []) %}
+          {% if history %}
+          <p style="font-weight:600;font-size:.82rem;color:var(--muted);margin:0 0 .4rem">Recent events</p>
+          {% for ev in history[:3] %}
+          <div class="hist-mini" style="display:flex;justify-content:space-between;gap:.5rem;padding:.2rem 0">
+            <span>{{ ev.event }}</span>
+            <span class="{{ 'impact-pos' if ev.impact > 0 else 'impact-neg' if ev.impact < 0 else '' }}">
+              {{ '+' if ev.impact > 0 else '' }}{{ ev.impact if ev.impact != 0 else '—' }}
+            </span>
+          </div>
+          {% endfor %}
+          {% else %}
+          <p class="hist-mini">No events recorded yet.</p>
+          {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;flex-shrink:0">
+          {% if is_risk %}
+          <button class="primary-button" style="font-size:.82rem;padding:.45rem .9rem;border-radius:999px;background:#c0392b;border-color:#c0392b">
+            Suspend from AI
+          </button>
+          <button class="ghost-button" style="font-size:.82rem;padding:.45rem .9rem;border-radius:999px">
+            Override score
+          </button>
+          {% else %}
+          <button class="ghost-button" style="font-size:.82rem;padding:.45rem .9rem;border-radius:999px">
+            View full history
+          </button>
+          <button class="ghost-button" style="font-size:.82rem;padding:.45rem .9rem;border-radius:999px">
+            Override score
+          </button>
+          {% endif %}
+          <a href="#" style="font-size:.78rem;color:var(--muted);text-decoration:underline;margin-top:.2rem">Export CSV</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- Score legend -->
+  <div class="inline-card" style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center;font-size:.84rem;padding:1rem 1.4rem">
+    <strong>Score legend:</strong>
+    <span><span style="color:var(--green)">★ 4.0–5.0</span> — High performer, fully eligible</span>
+    <span><span style="color:#e8a000">★ {{ min_score }}–3.9</span> — Active but monitor closely</span>
+    <span><span style="color:#c0392b">★ &lt; {{ min_score }}</span> — Excluded from AI selection</span>
+  </div>
+</div>
+{% endblock %}

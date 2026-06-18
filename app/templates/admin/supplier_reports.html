@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Customer support</p>
+      <h1>Customer reports</h1>
+      <p class="topbar-copy">All shipper-raised cargo issues and disputes. Respond on behalf of FreightFlow — shippers never contact suppliers directly.</p>
+    </div>
+    <div style="display:flex;gap:.6rem;align-self:flex-start;margin-top:.5rem">
+      <span style="padding:.5rem 1rem;border-radius:999px;background:rgba(155,28,28,.12);color:#9b1c1c;font-size:.85rem;font-weight:600">🔴 {{ critical_count }} Critical</span>
+      <span style="padding:.5rem 1rem;border-radius:999px;background:rgba(255,200,0,.18);color:#7a5800;font-size:.85rem;font-weight:600">🟡 {{ open_count }} Open</span>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterR('all',this)">All ({{ all_reports|length }})</button>
+    <button class="nav-chip" onclick="filterR('Critical',this)">🔴 Critical</button>
+    <button class="nav-chip" onclick="filterR('Open',this)">Open</button>
+    <button class="nav-chip" onclick="filterR('In Progress',this)">In Progress</button>
+    <button class="nav-chip" onclick="filterR('Resolved',this)">Resolved</button>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="report-list">
+      {% for r in all_reports %}
+      <div class="table-row rep-item" data-status="{{ r.status }}" data-priority="{{ r.priority }}" style="flex-wrap:wrap;gap:.8rem">
+        <div style="flex:1;min-width:140px">
+          <strong>{{ r.id }}</strong>
+          {% if r.priority == 'Critical' %}
+          <span style="font-size:.7rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.15rem .5rem;border-radius:999px;margin-left:.4rem">CRITICAL</span>
+          {% endif %}
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ r.bookingRef }}</p>
+          <p style="font-size:.78rem;margin:.1rem 0 0;color:var(--accent)">{{ r.category }}</p>
+        </div>
+        <div style="flex:2;min-width:180px">
+          <p style="margin:0;font-size:.88rem;font-weight:600">{{ r.shipper }}</p>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ r.description[:70] }}{% if r.description|length>70 %}…{% endif %}</p>
+          <p style="font-size:.75rem;color:var(--muted);margin:.2rem 0 0">Opened: {{ r.createdAt }}</p>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <p style="margin:0;font-size:.85rem">{{ r.supplier }}</p>
+          {% if r.disputeAmount %}
+          <p style="font-size:.82rem;color:#9b1c1c;margin:.2rem 0 0">Dispute: {{ zar(r.disputeAmount) }}</p>
+          {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
+          <span class="pill {% if r.status=='Resolved' %}badge{% endif %}"
+            style="{% if r.status=='In Progress' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+            {{ r.status }}
+          </span>
+          <a href="{{ '#' }}" class="primary-button" style="padding:.4rem .9rem;font-size:.82rem;text-decoration:none">Handle →</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-card" style="padding:2rem;text-align:center">
+        <p class="muted">No customer reports at this time.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterR(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.rep-item').forEach(r=>{
+    const show = val==='all' || r.dataset.status===val || (val==='Critical'&&r.dataset.priority==='Critical');
+    r.style.display = show ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

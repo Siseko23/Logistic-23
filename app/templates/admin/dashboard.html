@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal</p>
+      <h1>Platform overview</h1>
+      <p class="topbar-copy">Revenue, booking volumes, supplier SLA, and notification console.</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <p class="stat-label">Platform revenue</p>
+      <strong>R 1.84m</strong>
+      <p class="muted">Month-to-date fees &amp; commission</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Bookings processed</p>
+      <strong>428</strong>
+      <p class="muted">Across all shippers &amp; suppliers</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Top supplier SLA</p>
+      <strong>98.2%</strong>
+      <p class="muted">On-time acceptances (30 days)</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Avg. quote return</p>
+      <strong>3.4s</strong>
+      <p class="muted">Against 5s non-functional target</p>
+    </article>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Notification console</h2><p>Cross-platform updates by channel and audience.</p></div>
+      <div class="stack">
+        {% for n in notifications %}
+        <article class="notification-card">
+          <div class="notification-head">
+            <strong style="font-size:.875rem">{{ n.title }}</strong>
+            <span class="pill">{{ n.audience }}</span>
+          </div>
+          <p style="margin:.3rem 0 .25rem;font-size:.85rem;color:var(--text-2)">{{ n.detail }}</p>
+          <p class="tiny-note">{{ n.channel }} · {{ n.time }}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Quick actions</h2><p>Jump to any admin function.</p></div>
+      <div class="stack">
+        {% set actions = [
+          ('admin.suppliers','Supplier approvals','Review and approve pending supplier applications.'),
+          ('admin.bookings','Booking interventions','Advance status or reassign suppliers manually.'),
+          ('admin.dashboard','Platform settings','Adjust volumetric divisor, fees, and commission.'),
+          ('admin.executive_reports','Reports & transactions','Export bookings, transactions, and supplier reviews.'),
+          ('admin.users','Document review','Verify compliance documents submitted by suppliers.'),
+          ('admin.marketplace','✦ AI engine settings','Configure supplier selection weights, proximity, and response window.'),
+          ('admin.supplier_risk','Supplier performance','Monitor all supplier scores, at-risk accounts, and event history.'),
+        ] %}
+        {% for endpoint, title, desc in actions %}
+        <a href="{{ url_for(endpoint) }}" class="inline-card" style="text-decoration:none;display:block">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong style="font-size:.875rem">{{ title }}</strong>
+              <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">{{ desc }}</p>
+            </div>
+            <span style="color:var(--accent);font-size:1rem;flex-shrink:0;margin-left:.5rem">→</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

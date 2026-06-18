@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .route-intel-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.2rem}
+  .demand-chip{display:inline-block;padding:.2rem .75rem;border-radius:999px;font-size:.76rem;font-weight:700}
+  .demand-High{background:#d5f5e3;color:#1e8449}
+  .demand-Medium{background:#fef9e7;color:#7d6608}
+  .demand-Low{background:#f2f3f4;color:#626567}
+  .share-bar-row{display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
+  .share-bar-row:last-child{border-bottom:none}
+  .trend-up{color:#27ae60;font-weight:700}
+  .trend-down{color:#c0392b;font-weight:700}
+  .trend-stable{color:#7f8c8d;font-weight:700}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal · Intelligence</p>
+      <h1>📊 Marketplace Intelligence</h1>
+      <p class="topbar-copy">Platform-wide route pricing, demand trends, and supplier market share. Powered by all FreightFlow booking data.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('admin.supplier_risk') }}" class="ghost-button">⚠️ Supplier Risk</a>
+      <a href="{{ url_for('admin.executive_reports') }}" class="primary-button">📋 Reports</a>
+    </div>
+  </div>
+
+  <!-- Top stats -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+    <div class="stat-card">
+      <p class="stat-label">Total active routes</p>
+      <strong>{{ routes | length }}</strong>
+      <p class="small-note">Tracked by FreightFlow</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Monthly booking volume</p>
+      <strong>{{ total_volume }}</strong>
+      <p class="small-note">Platform total (Apr)</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Avg platform rate</p>
+      <strong>{{ zar(avg_platform_rate) }}</strong>
+      <p class="small-note">Across all routes</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Active suppliers</p>
+      <strong>4</strong>
+      <p class="small-note">Carrying bookings</p>
+    </div>
+  </div>
+
+  <!-- Route intelligence -->
+  <div>
+    <h2 style="margin-bottom:1rem">Route intelligence</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+      {% for r in routes %}
+      <div class="route-intel-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem">
+          <div>
+            <strong style="font-size:1rem">{{ r.route }}</strong>
+            <div style="margin-top:.2rem">
+              <span class="demand-chip demand-{{ r.demand }}">{{ r.demand }} demand</span>
+            </div>
+          </div>
+          <span class="{% if r.trend=='up' %}trend-up{% elif r.trend=='down' %}trend-down{% else %}trend-stable{% endif %}">
+            {% if r.trend=='up' %}▲{% elif r.trend=='down' %}▼{% else %}→{% endif %}
+            {{ r.priceChange | abs }}%
+          </span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.87rem">
+          <div>
+            <p class="small-note" style="margin-bottom:.1rem">Market avg rate</p>
+            <strong>{{ zar(r.avgRate) }}</strong>
+          </div>
+          <div>
+            <p class="small-note" style="margin-bottom:.1rem">Current avg</p>
+            <strong style="color:{% if r.currentAvg < r.avgRate %}#27ae60{% else %}#c0392b{% endif %}">{{ zar(r.currentAvg) }}</strong>
+          </div>
+          <div>
+            <p class="small-note" style="margin-bottom:.1rem">Monthly volume</p>
+            <strong>{{ r.volume }} bookings</strong>
+          </div>
+          <div>
+            <p class="small-note" style="margin-bottom:.1rem">Top supplier</p>
+            <strong style="font-size:.82rem">{{ r.topSupplier }}</strong>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Supplier market share -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem">
+    <div class="stat-card" style="padding:1.4rem">
+      <h3 style="margin-bottom:1rem">Supplier market share</h3>
+      {% for s in supplier_share %}
+      <div class="share-bar-row">
+        <span style="width:160px;font-size:.88rem;font-weight:600">{{ s.name }}</span>
+        <div style="flex:1;background:var(--bg);border-radius:999px;height:8px">
+          <div style="width:{{ s.pct }}%;height:8px;border-radius:999px;background:var(--accent);transition:width .8s ease"></div>
+        </div>
+        <span style="font-weight:700;color:var(--accent-dark);min-width:36px;text-align:right">{{ s.pct }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="stat-card" style="padding:1.4rem">
+      <h3 style="margin-bottom:1rem">Demand by route (bookings)</h3>
+      <canvas id="demandChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Price movement insight -->
+  <div class="stat-card" style="padding:1.4rem;background:linear-gradient(135deg,rgba(21,95,160,.07),rgba(21,95,160,.02))">
+    <h3 style="margin-bottom:.6rem">✦ AI market insight</h3>
+    <p style="color:var(--muted);margin:0">The Johannesburg → Polokwane route is showing a <strong style="color:#c0392b">5.8% price increase</strong> with high demand — consider raising platform fees by 1–2% to improve margin. The Cape Town → Gqeberha route is softening; activating additional suppliers could increase volume by 20%.</p>
+  </div>
+</div>
+<script>
+new Chart(document.getElementById('demandChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ routes | map(attribute='route') | list | tojson }},
+    datasets: [{
+      label: 'Bookings',
+      data: {{ routes | map(attribute='volume') | list | tojson }},
+      backgroundColor: 'rgba(21,95,160,.7)',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10 } } },
+      y: { beginAtZero: true }
+    }
+  }
+});
+</script>
+{% endblock %}

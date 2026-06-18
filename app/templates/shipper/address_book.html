@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .addr-card{border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.5);padding:1rem;display:flex;gap:.9rem;align-items:flex-start;transition:border-color .2s}
+  .addr-card:hover{border-color:var(--accent)}
+  .addr-icon{width:44px;height:44px;border-radius:14px;background:rgba(21,95,160,.1);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+  .addr-count{font-size:.72rem;padding:.2rem .55rem;border-radius:999px;background:rgba(47,108,87,.12);color:var(--green);font-weight:700}
+  .add-form{background:rgba(21,95,160,.04);border:1px dashed rgba(21,95,160,.3);border-radius:22px;padding:1.4rem}
+  .add-form h3{margin:0 0 1rem;font-family:'IBM Plex Serif',serif}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Address book</p>
+      <h1>Saved locations</h1>
+      <p class="topbar-copy">Save frequently used collection and delivery addresses. They'll autocomplete when you book a shipment.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Saved addresses -->
+    <div class="stack">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>{{ addresses|length }} saved location{{ 's' if addresses|length != 1 }}</strong>
+        <input type="search" placeholder="Filter locations…" id="addr-search" oninput="filterAddrs(this.value)"
+               style="padding:.55rem .9rem;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.7);width:200px;font-size:.88rem">
+      </div>
+      <div class="stack" id="addr-list">
+        {% for addr in addresses | sort(attribute='useCount', reverse=True) %}
+        <div class="addr-card" data-label="{{ addr.label|lower }} {{ addr.address|lower }}">
+          <div class="addr-icon">📍</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <strong>{{ addr.label }}</strong>
+              <span class="addr-count">Used {{ addr.useCount }}×</span>
+            </div>
+            <p style="margin:.3rem 0 .15rem;font-size:.88rem">{{ addr.address }}</p>
+            <p class="muted" style="font-size:.8rem;margin:0">{{ addr.contact }} · {{ addr.phone }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;flex-shrink:0">
+            <button onclick="copyAddr('{{ addr.address }}')" class="ghost-button" style="padding:.4rem .7rem;font-size:.78rem">📋 Copy</button>
+            <button onclick="useAddr('{{ addr.label }}','{{ addr.address }}')" class="primary-button" style="padding:.4rem .7rem;font-size:.78rem;border-radius:12px">Use</button>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-card" style="padding:2rem;text-align:center">
+          <p style="font-size:2rem;margin:0">📍</p>
+          <p class="muted">No saved addresses yet. Add your first below.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Add new address form -->
+    <div class="add-form">
+      <h3>Add new location</h3>
+      <form action="{{ '#' }}" method="POST">
+        <div class="form-grid">
+          <label class="form-span">
+            Location label (e.g. "JHB Warehouse")
+            <input type="text" name="label" placeholder="My Warehouse, JHB" required>
+          </label>
+          <label class="form-span">
+            Full address
+            <input type="text" name="address" placeholder="12 Commerce St, Johannesburg, Gauteng, 2001" required>
+          </label>
+          <label>
+            Contact person
+            <input type="text" name="contact" placeholder="John Smith">
+          </label>
+          <label>
+            Phone
+            <input type="tel" name="phone" placeholder="+27 82 555 0100">
+          </label>
+        </div>
+        <button type="submit" class="primary-button wide-button" style="margin-top:1rem">+ Save location</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Tips -->
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.15)">
+    <div style="display:flex;gap:.8rem;align-items:flex-start">
+      <span style="font-size:1.6rem">💡</span>
+      <div>
+        <strong>Pro tip</strong>
+        <p class="muted" style="margin:.3rem 0 0">When booking a new shipment, start typing in the address field and your saved locations will appear as suggestions. Your most-used addresses appear first. Addresses are saved per account and never shared.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterAddrs(val){
+  document.querySelectorAll('.addr-card').forEach(c=>{
+    c.style.display = c.dataset.label.includes(val.toLowerCase()) ? '' : 'none';
+  });
+}
+function copyAddr(addr){
+  navigator.clipboard.writeText(addr).then(()=>{
+    alert('Address copied to clipboard!');
+  });
+}
+function useAddr(label,addr){
+  // If arriving from booking flow, pre-fill the address fields
+  sessionStorage.setItem('ffn-addr-label', label);
+  sessionStorage.setItem('ffn-addr', addr);
+  window.location = '/shipper/shipment';
+}
+</script>
+{% endblock %}

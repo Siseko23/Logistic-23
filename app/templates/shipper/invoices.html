@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>Invoices</h1>
+      <p class="topbar-copy">Tax invoices for all your FreightFlow bookings. Download or view payment status below.</p>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:.5rem">
+    {% set total_invoiced = invoices|sum(attribute='amount') %}
+    {% set settled = invoices|selectattr('status','equalto','Settled')|list %}
+    {% set pending = invoices|selectattr('status','equalto','Pending settlement')|list %}
+    {% set overdue = invoices|selectattr('status','equalto','Overdue')|list %}
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p class="eyebrow" style="margin-bottom:.3rem">Total invoiced</p>
+      <p style="font-size:1.5rem;font-weight:800;color:var(--accent)">{{ zar(total_invoiced) }}</p>
+      <p class="muted" style="font-size:.78rem">{{ invoices|length }} invoices</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p class="eyebrow" style="margin-bottom:.3rem">Settled</p>
+      <p style="font-size:1.5rem;font-weight:800;color:#1a6b3c">{{ zar(settled|sum(attribute='amount')) }}</p>
+      <p class="muted" style="font-size:.78rem">{{ settled|length }} invoices</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p class="eyebrow" style="margin-bottom:.3rem">Pending</p>
+      <p style="font-size:1.5rem;font-weight:800;color:#7a5800">{{ zar(pending|sum(attribute='amount')) }}</p>
+      <p class="muted" style="font-size:.78rem">{{ pending|length }} invoices</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem">
+      <p class="eyebrow" style="margin-bottom:.3rem">Overdue</p>
+      <p style="font-size:1.5rem;font-weight:800;color:#9b1c1c">{{ zar(overdue|sum(attribute='amount')) }}</p>
+      <p class="muted" style="font-size:.78rem">{{ overdue|length }} invoices</p>
+    </div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterInv('all',this)">All</button>
+    <button class="nav-chip" onclick="filterInv('Settled',this)">Settled</button>
+    <button class="nav-chip" onclick="filterInv('Pending settlement',this)">Pending</button>
+    <button class="nav-chip" onclick="filterInv('Open invoice',this)">Open (30-day)</button>
+    <button class="nav-chip" onclick="filterInv('Overdue',this)">Overdue</button>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="inv-list">
+      {% for inv in invoices %}
+      <div class="table-row inv-item" data-status="{{ inv.status }}" style="flex-wrap:wrap;gap:.8rem;align-items:center">
+        <!-- Invoice number + date -->
+        <div style="flex:1.2;min-width:160px">
+          <strong style="font-size:.95rem">{{ inv.inv_no }}</strong>
+          <p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Booking: <a href="{{ url_for('shipper.booking_detail', ref=inv.ref) }}" style="color:var(--accent)">{{ inv.ref }}</a></p>
+          <p style="font-size:.76rem;margin:.1rem 0 0;color:var(--muted)">Issued {{ inv.date }} · Due {{ inv.due }}</p>
+        </div>
+        <!-- Route + supplier -->
+        <div style="flex:1.4;min-width:160px">
+          <p style="margin:0;font-weight:600">{{ inv.route }}</p>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ inv.supplier }}</p>
+          <p style="font-size:.78rem;margin:.1rem 0 0;color:var(--muted)">{{ inv.method }}</p>
+        </div>
+        <!-- Amount -->
+        <div style="min-width:130px;text-align:right">
+          <p style="margin:0;font-size:1.05rem;font-weight:700;color:var(--accent)">{{ zar(inv.amount) }}</p>
+          <p style="margin:.1rem 0 0;font-size:.78rem;color:var(--muted)">incl. platform fee</p>
+        </div>
+        <!-- Status + actions -->
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;min-width:120px">
+          {% if inv.status == 'Settled' %}
+            <span style="background:#dcfce7;color:#166534;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:999px">✓ Settled</span>
+          {% elif inv.status == 'Pending settlement' %}
+            <span style="background:#fef9c3;color:#854d0e;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:999px">⏳ Pending</span>
+          {% elif inv.status == 'Open invoice' %}
+            <span style="background:#dbeafe;color:#1e40af;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:999px">📄 Open (30-day)</span>
+          {% elif inv.status == 'Overdue' %}
+            <span style="background:#fee2e2;color:#991b1b;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:999px">⚠ Overdue</span>
+          {% else %}
+            <span style="background:#f1f5f9;color:#475569;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:999px">{{ inv.status }}</span>
+          {% endif %}
+          <a href="{{ '#' }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.8rem;text-decoration:none">⬇ PDF</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-card" style="padding:2rem;text-align:center">
+        <p class="muted">No invoices yet. Invoices appear once you place a booking.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterInv(status, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.inv-item').forEach(r => {
+    r.style.display = (status === 'all' || r.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Reports</p>
+      <h1>{{ report.id }}</h1>
+      <p class="topbar-copy">{{ report.category }} — Booking {{ report.bookingRef }}</p>
+    </div>
+    <span class="pill {% if report.status=='Resolved' %}badge{% endif %}"
+      style="align-self:flex-start;margin-top:.5rem;{% if report.status=='In Progress' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+      {{ report.status }}
+    </span>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Support thread</h2><p>All communication goes through FreightFlow. Supplier and driver contact details are never shared.</p></div>
+
+      <div style="display:flex;flex-direction:column;gap:.7rem;min-height:300px;max-height:420px;overflow-y:auto;padding:.3rem 0" id="thread">
+        {% for msg in report.thread %}
+        <div style="display:flex;flex-direction:column;{% if msg.sender=='shipper' %}align-items:flex-end{% else %}align-items:flex-start{% endif %}">
+          <div style="max-width:80%;padding:.7rem 1rem;border-radius:18px;font-size:.9rem;line-height:1.5;
+            {% if msg.sender=='shipper' %}background:var(--accent);color:#fff;border-bottom-right-radius:6px
+            {% elif msg.sender=='support' %}background:rgba(47,108,87,.12);border:1px solid rgba(47,108,87,.2);border-bottom-left-radius:6px
+            {% else %}background:rgba(244,249,255,.9);border:1px solid var(--line);border-bottom-left-radius:6px{% endif %}">
+            {% if msg.sender != 'shipper' %}
+            <p style="margin:0 0 .3rem;font-size:.75rem;font-weight:700;opacity:.7;text-transform:uppercase">
+              {% if msg.sender=='support' %}🛡️ FreightFlow Support{% else %}📋 System{% endif %}
+            </p>
+            {% endif %}
+            {{ msg.text }}
+            {% if msg.attachment %}<p style="font-size:.75rem;margin:.3rem 0 0;opacity:.8">📎 {{ msg.attachment }}</p>{% endif %}
+          </div>
+          <p style="font-size:.72rem;color:var(--muted);margin:.2rem .3rem 0">{{ msg.time }}</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if report.status != 'Resolved' %}
+      <form method="POST" action="{{ '#' }}" enctype="multipart/form-data" style="margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem">
+        <div style="display:flex;gap:.6rem;align-items:flex-end">
+          <textarea name="message" rows="2" placeholder="Add more information or ask a question…" style="flex:1;resize:none;border-radius:14px;border:1px solid var(--line);padding:.65rem .85rem;background:rgba(255,255,255,.9)" required></textarea>
+          <div style="display:flex;flex-direction:column;gap:.4rem">
+            <label style="cursor:pointer;padding:.55rem .75rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.6);font-size:.85rem;text-align:center" title="Attach file">
+              📎<input type="file" name="attachment" accept=".pdf,.jpg,.png" style="display:none" onchange="document.getElementById('fn').textContent=this.files[0]?.name||''"/>
+            </label>
+            <button type="submit" class="primary-button" style="padding:.55rem .9rem">Send</button>
+          </div>
+        </div>
+        <p id="fn" style="font-size:.75rem;color:var(--accent);margin:.3rem 0 0"></p>
+      </form>
+      {% else %}
+      <div style="margin-top:1rem;padding:.8rem;background:rgba(47,108,87,.08);border-radius:14px;text-align:center">
+        <p style="margin:0;color:var(--green);font-weight:600">✅ This report has been resolved</p>
+        <p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Resolved on {{ report.resolvedAt }}</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Report summary</h2></div>
+        <div class="stack" style="gap:.5rem">
+          <div class="summary-row"><span>Case ID</span><strong>{{ report.id }}</strong></div>
+          <div class="summary-row"><span>Booking ref</span><strong>{{ report.bookingRef }}</strong></div>
+          <div class="summary-row"><span>Category</span><strong>{{ report.category }}</strong></div>
+          <div class="summary-row"><span>Priority</span>
+            <strong style="color:{% if report.priority=='Critical' %}#9b1c1c{% elif report.priority=='Urgent' %}#7a5800{% else %}var(--accent){% endif %}">
+              {{ report.priority }}
+            </strong>
+          </div>
+          <div class="summary-row"><span>Opened</span><strong>{{ report.createdAt }}</strong></div>
+          <div class="summary-row"><span>Assigned agent</span><strong>{{ report.assignedAgent or 'Awaiting assignment' }}</strong></div>
+          <div class="summary-row"><span>Status</span><strong>{{ report.status }}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Booking details</h2></div>
+        {% set b = booking %}
+        {% if b %}
+        <div class="stack" style="gap:.4rem">
+          <div class="summary-row"><span>Route</span><strong>{{ b.route }}</strong></div>
+          <div class="summary-row"><span>Supplier</span><strong>{{ b.supplier }}</strong></div>
+          <div class="summary-row"><span>Status</span><strong>{{ b.status }}</strong></div>
+          <div class="summary-row"><span>Value</span><strong>{{ zar(b.value) }}</strong></div>
+        </div>
+        {% endif %}
+        <div style="margin-top:.8rem;padding:.7rem;background:rgba(155,28,28,.05);border-radius:12px;border:1px solid rgba(155,28,28,.12)">
+          <p style="margin:0;font-size:.82rem;color:#9b1c1c">🔒 Supplier and driver contact details are not visible to shippers. All communication is handled by FreightFlow support.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const t = document.getElementById('thread');
+if (t) t.scrollTop = t.scrollHeight;
+</script>
+{% endblock %}

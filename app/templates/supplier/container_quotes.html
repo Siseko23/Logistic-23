@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Container quotes</p>
+      <h1>Container route quotes</h1>
+      <p class="topbar-copy">Submit your per-container rate for specific routes. FreightFlow adds a 10% platform fee on top — shippers see the combined price. You are always paid your quoted rate.</p>
+    </div>
+    <a href="{{ '#' }}" class="primary-button" style="align-self:flex-start;margin-top:.5rem;text-decoration:none">+ Submit new quote</a>
+  </div>
+
+  <!-- How pricing works -->
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.18)">
+    <div class="panel-head"><h2>How container pricing works</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+      <div style="display:flex;gap:.75rem">
+        <span style="font-size:1.4rem;flex-shrink:0">1️⃣</span>
+        <div><strong style="font-size:.88rem">You quote your rate</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Submit your price per container per route, e.g. R20,000 for a 20ft from Durban to Johannesburg.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem">
+        <span style="font-size:1.4rem;flex-shrink:0">2️⃣</span>
+        <div><strong style="font-size:.88rem">Platform adds 10%</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">FreightFlow adds a 10% platform fee. The shipper sees R22,000. You see your R20,000 only.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem">
+        <span style="font-size:1.4rem;flex-shrink:0">3️⃣</span>
+        <div><strong style="font-size:.88rem">You file your invoice</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">After delivery, a PO is issued for your quoted rate. Upload your invoice against it to claim payment.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem">
+        <span style="font-size:1.4rem;flex-shrink:0">4️⃣</span>
+        <div><strong style="font-size:.88rem">Paid your rate</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Once verified, you receive exactly what you quoted — R20,000. Platform fee goes to FreightFlow.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter tabs -->
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterQ('all',this)">All ({{ quotes|length }})</button>
+    <button class="nav-chip" onclick="filterQ('Active',this)">Active</button>
+    <button class="nav-chip" onclick="filterQ('Pending approval',this)">Pending approval</button>
+    <button class="nav-chip" onclick="filterQ('Rejected',this)">Rejected</button>
+  </div>
+
+  <section class="panel" style="padding:0;overflow:hidden">
+    {% if quotes %}
+    <!-- Table header -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 100px 100px 110px 90px 100px;gap:.5rem;padding:.55rem 1.1rem;background:rgba(0,0,0,.03);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">
+      <span>Route</span><span>Container</span><span>Your rate</span><span>Platform fee</span><span>Shipper price</span><span>Valid period</span><span>Status</span><span>Actions</span>
+    </div>
+    {% for q in quotes %}
+    <div class="table-row quote-row" data-status="{{ q.status }}" style="display:grid;grid-template-columns:1fr 1fr 1fr 100px 100px 110px 90px 100px;gap:.5rem;align-items:center;flex-wrap:wrap;
+      {% if q.status=='Pending approval' %}background:rgba(255,200,0,.05);border-left:3px solid #e8a000{% elif q.status=='Rejected' %}background:rgba(192,57,43,.04);border-left:3px solid rgba(192,57,43,.3){% endif %}">
+
+      <div>
+        <strong style="font-size:.87rem">{{ q.origin }} → {{ q.destination }}</strong>
+        <p class="muted" style="font-size:.74rem;margin:.1rem 0 0">{{ q.id }}</p>
+      </div>
+
+      <div>
+        <span style="font-size:.84rem">🚢 {{ q.containerType }}</span>
+      </div>
+
+      <div>
+        <strong style="font-size:.95rem;color:var(--accent-dark)">R {{ "{:,.0f}".format(q.ratePerContainer) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">per container</p>
+      </div>
+
+      <div>
+        <span style="font-size:.82rem;color:#9b1c1c">+ R {{ "{:,.0f}".format(q.ratePerContainer * q.platformFeePct / 100) }}</span>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">{{ q.platformFeePct }}%</p>
+      </div>
+
+      <div>
+        <strong style="font-size:.88rem">R {{ "{:,.0f}".format(q.shipperPrice) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">shipper sees</p>
+      </div>
+
+      <div>
+        <span style="font-size:.78rem">{{ q.validFrom }}<br>to {{ q.validTo }}</span>
+      </div>
+
+      <div>
+        <span style="font-size:.75rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;
+          {% if q.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+          {% elif q.status=='Pending approval' %}background:rgba(255,200,0,.18);color:#7a5800
+          {% elif q.status=='Rejected' %}background:rgba(192,57,43,.1);color:#9b1c1c
+          {% else %}background:rgba(0,0,0,.07);color:var(--muted){% endif %}">
+          {{ q.status }}
+        </span>
+        {% if q.approvedAt %}<p class="muted" style="font-size:.7rem;margin:.2rem 0 0">Approved {{ q.approvedAt }}</p>{% endif %}
+      </div>
+
+      <div>
+        {% if q.status in ('Active','Pending approval') %}
+        <form method="POST" action="{{ '#' }}" style="margin:0">
+          <button type="submit" style="font-size:.74rem;padding:.28rem .6rem;border-radius:7px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted)">Withdraw</button>
+        </form>
+        {% endif %}
+        {% if q.notes %}
+        <p class="muted" style="font-size:.7rem;margin:.3rem 0 0;font-style:italic">{{ q.notes[:40] }}{% if q.notes|length > 40 %}…{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="padding:3rem;text-align:center">
+      <p style="font-size:2rem;margin:0">🚢</p>
+      <p class="muted" style="margin:.6rem 0 .8rem">No container quotes submitted yet.</p>
+      <a href="{{ '#' }}" class="primary-button" style="text-decoration:none">Submit your first quote</a>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterQ(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.quote-row').forEach(r=>{
+    r.style.display = (val==='all'||r.dataset.status===val)?'':'none';
+  });
+}
+</script>
+{% endblock %}

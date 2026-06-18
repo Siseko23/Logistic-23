@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Container quotes</p>
+      <h1>Container route quotes</h1>
+      <p class="topbar-copy">Review and approve supplier container rates. Approved quotes feed directly into the shipper quoting engine with platform fee added on top.</p>
+    </div>
+    {% if pending %}
+    <span style="align-self:flex-start;margin-top:.5rem;background:rgba(232,160,0,.15);color:#7a5800;font-size:.82rem;font-weight:700;padding:.4rem .9rem;border-radius:999px">
+      ⏳ {{ pending|length }} awaiting approval
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterCQ('all',this)">All ({{ quotes|length }})</button>
+    <button class="nav-chip" onclick="filterCQ('Pending approval',this)">Pending approval {{ '(' + pending|length|string + ')' if pending }}</button>
+    <button class="nav-chip" onclick="filterCQ('Active',this)">Active</button>
+    <button class="nav-chip" onclick="filterCQ('Rejected',this)">Rejected</button>
+  </div>
+
+  <section class="panel" style="padding:0;overflow:hidden">
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 90px 100px 110px 90px 130px;gap:.5rem;padding:.55rem 1.1rem;background:rgba(0,0,0,.03);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">
+      <span>Supplier</span><span>Route</span><span>Container</span><span>Supplier rate</span><span>Platform fee</span><span>Shipper price</span><span>Status</span><span>Actions</span>
+    </div>
+    {% for q in quotes %}
+    <div class="cq-row" data-status="{{ q.status }}"
+      style="display:grid;grid-template-columns:1.2fr 1fr 1fr 90px 100px 110px 90px 130px;gap:.5rem;align-items:center;padding:.85rem 1.1rem;border-bottom:1px solid var(--line);font-size:.83rem;
+      {% if q.status=='Pending approval' %}background:rgba(255,200,0,.05);border-left:3px solid #e8a000{% endif %}">
+
+      <div>
+        <strong>{{ q.supplierName }}</strong>
+        <p class="muted" style="font-size:.74rem;margin:.1rem 0 0">{{ q.supplierId }} · {{ q.id }}</p>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">Submitted {{ q.submittedAt }}</p>
+      </div>
+      <div><strong>{{ q.origin }} → {{ q.destination }}</strong></div>
+      <div>🚢 {{ q.containerType }}</div>
+      <div>
+        <strong style="color:var(--accent-dark)">{{ zar(q.ratePerContainer) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">per container</p>
+      </div>
+      <div>
+        <span style="color:#9b1c1c">+ {{ zar((q.ratePerContainer * q.platformFeePct / 100)|int) }}</span>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">{{ q.platformFeePct }}%</p>
+      </div>
+      <div>
+        <strong>{{ zar(q.shipperPrice) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">shipper sees</p>
+      </div>
+      <div>
+        <span style="font-size:.74rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;
+          {% if q.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+          {% elif q.status=='Pending approval' %}background:rgba(255,200,0,.18);color:#7a5800
+          {% else %}background:rgba(192,57,43,.1);color:#9b1c1c{% endif %}">{{ q.status }}</span>
+        {% if q.notes %}<p class="muted" style="font-size:.7rem;margin:.3rem 0 0;font-style:italic">{{ q.notes[:50] }}{% if q.notes|length>50 %}…{% endif %}</p>{% endif %}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.35rem">
+        {% if q.status == 'Pending approval' %}
+        <form method="POST" action="{{ '#' }}" style="margin:0">
+          <button type="submit" class="primary-button" style="width:100%;font-size:.76rem;padding:.38rem .6rem">✅ Approve</button>
+        </form>
+        <form method="POST" action="{{ '#' }}" style="margin:0">
+          <button type="submit" style="width:100%;font-size:.76rem;padding:.38rem .6rem;border-radius:10px;border:1px solid rgba(192,57,43,.3);background:rgba(192,57,43,.06);color:#9b1c1c;cursor:pointer">✗ Reject</button>
+        </form>
+        {% elif q.status == 'Active' %}
+        <span style="font-size:.78rem;color:var(--accent-dark)">✅ Live on platform</span>
+        <p class="muted" style="font-size:.7rem">Approved {{ q.approvedAt }}</p>
+        {% else %}
+        <span class="muted" style="font-size:.78rem">—</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterCQ(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.cq-row').forEach(r=>{
+    r.style.display=(val==='all'||r.dataset.status===val)?'':'none';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .ai-panel{background:linear-gradient(135deg,rgba(21,95,160,.12),rgba(21,95,160,.04));border:2px solid rgba(21,95,160,.3);border-radius:22px;padding:1.4rem;margin-bottom:1.5rem}
+  .ai-panel h2{font-family:'IBM Plex Serif',Georgia,serif;margin:0 0 .3rem;font-size:1.4rem}
+  .ai-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:700;letter-spacing:.06em;background:var(--accent);color:#fff;padding:.25rem .75rem;border-radius:999px;margin-bottom:.7rem}
+  .ai-score-row{display:flex;gap:.8rem;flex-wrap:wrap;margin:.8rem 0}
+  .ai-score-pill{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.7);border:1px solid rgba(21,95,160,.2);border-radius:14px;padding:.6rem .9rem;min-width:90px}
+  .ai-score-pill .pill-val{font-size:1.2rem;font-weight:700;color:var(--accent-dark);font-family:'IBM Plex Serif',serif}
+  .ai-score-pill .pill-lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem;text-align:center}
+  .star-score{color:#e8a000;font-weight:600}
+  .quote-card{width:100%;padding:1rem;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.5);text-align:left;transition:border-color .2s,transform .2s;margin-bottom:.7rem;display:block}
+  .quote-card:hover,.quote-card.ai-top{border-color:var(--accent);background:rgba(210,230,250,.55);transform:translateY(-1px)}
+  .quote-card.ai-top{border-width:2px}
+  .quote-card h3{font-family:'IBM Plex Serif',Georgia,serif;margin:0}
+  .ai-excluded-card{padding:1rem;border:1px dashed rgba(21,95,160,.2);border-radius:18px;background:rgba(0,0,0,.02);margin-bottom:.5rem;opacity:.7}
+  .util-bar-wrap{background:rgba(21,95,160,.1);border-radius:999px;height:6px;margin:.4rem 0;overflow:hidden}
+  .util-bar{height:100%;background:var(--accent);border-radius:999px}
+  .dc-flag{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:600;color:#7a5800;background:rgba(255,200,0,.2);padding:.2rem .65rem;border-radius:999px;margin:.4rem 0}
+  .dest-badge{font-size:.76rem;padding:.2rem .6rem;border-radius:999px;font-weight:600;border:1px solid var(--line)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>AI-matched quotes</h1>
+      <p class="topbar-copy">The AI engine has ranked all qualifying suppliers by composite score (price 50% · performance 35% · proximity 15%). The best match is pre-selected.</p>
+    </div>
+    <div style="display:flex;gap:.7rem;align-items:flex-start;flex-shrink:0">
+      <a href="{{ url_for('shipper.new_booking') }}" class="ghost-button">← Edit shipment</a>
+    </div>
+  </div>
+
+  <!-- Cargo summary recap -->
+  <div class="inline-card" style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center;padding:1rem 1.4rem">
+    <div>
+      <p class="eyebrow" style="margin:0">Cargo summary</p>
+      <strong style="font-size:1.1rem">
+        {% if metrics.unitType == 'container' %}
+          {{ metrics.pieces }} × {{ metrics.containerType }} &nbsp;·&nbsp;
+          {{ metrics.cbm }} m³ total &nbsp;·&nbsp; {{ metrics.containerTeu }} TEU &nbsp;·&nbsp;
+          <span style="color:#1565a0;font-weight:700">🚢 Skeletal trailers only</span>
+        {% else %}
+          {{ metrics.pieces }} {{ 'pallets' if metrics.unitType=='pallets' else 'pieces' }}
+          &nbsp;·&nbsp; {{ metrics.cbm }} m³ &nbsp;·&nbsp; {{ metrics.chargeableWeight|round(0)|int }} kg chargeable
+        {% endif %}
+      </strong>
+    </div>
+    {% if form.get('destinationType') %}
+    <div>
+      <p class="eyebrow" style="margin:0">Destination type</p>
+      <span class="dest-badge">
+        {{ '🏠' if form.destinationType=='Door-to-door' else '🏪' if form.destinationType=='Retail store' else '🏭' }}
+        {{ form.get('destinationType','Door-to-door') }}
+      </span>
+      {% if form.get('destinationType')=='Distribution Centre' %}
+      <div class="dc-flag">🏭 DC slot: {{ form.get('dcSlotDate','') }} {{ form.get('dcSlotTime','') }}</div>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div>
+      <p class="eyebrow" style="margin:0">Collection</p>
+      <strong style="font-size:.92rem">{{ form.get('collectionAddress','—') }}</strong>
+      {% if form.get('pickupContactName') %}
+      <div style="font-size:.82rem;color:var(--muted)">{{ form.get('pickupContactName') }} · {{ form.get('pickupContactPhone','') }}</div>
+      {% endif %}
+    </div>
+    <div>
+      <p class="eyebrow" style="margin:0">Delivery</p>
+      <strong style="font-size:.92rem">{{ form.get('deliveryAddress','—') }}</strong>
+      {% if form.get('dropoffContactName') %}
+      <div style="font-size:.82rem;color:var(--muted)">{{ form.get('dropoffContactName') }} · {{ form.get('dropoffContactPhone','') }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- LEFT: quotes list -->
+    <section>
+
+      <!-- AI Selected Supplier banner -->
+      {% if ai_selected %}
+      <div class="ai-panel">
+        <div class="ai-badge">✦ AI SELECTED SUPPLIER</div>
+        <h2>{{ ai_selected.supplierName }}</h2>
+        <div style="color:var(--muted);font-size:.88rem;margin-bottom:.5rem">
+          Base: {{ ai_selected.supplierBaseCity }} · {{ ai_selected.proximityKm }} km from pickup
+          &nbsp;·&nbsp; <span class="star-score">★ {{ ai_selected.supplierScore }}</span>
+        </div>
+        <div class="ai-score-row">
+          <div class="ai-score-pill">
+            <span class="pill-val">{{ (ai_selected.aiScore * 100)|round(1) }}%</span>
+            <span class="pill-lbl">Composite score</span>
+          </div>
+          <div class="ai-score-pill">
+            <span class="pill-val">{{ (ai_selected.priceScore * 100)|round(0)|int }}%</span>
+            <span class="pill-lbl">Price score</span>
+          </div>
+          <div class="ai-score-pill">
+            <span class="pill-val">{{ (ai_selected.perfScore * 100)|round(0)|int }}%</span>
+            <span class="pill-lbl">Performance</span>
+          </div>
+          <div class="ai-score-pill">
+            <span class="pill-val">{{ (ai_selected.proxScore * 100)|round(0)|int }}%</span>
+            <span class="pill-lbl">Proximity</span>
+          </div>
+          <div class="ai-score-pill">
+            <span class="pill-val">{{ zar(ai_selected.total) }}</span>
+            <span class="pill-lbl">Total price</span>
+          </div>
+        </div>
+        <p style="font-size:.83rem;color:var(--muted);margin:.5rem 0 0">
+          Weights: Price {{ ai_settings.priceWeight }}% · Performance {{ ai_settings.performanceWeight }}% · Proximity {{ ai_settings.proximityWeight }}%
+          · Min score: {{ ai_settings.minPerformanceScore }} · Proximity radius: {{ ai_settings.proximityRadiusKm }} km
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- All eligible vehicles with AI scores -->
+      <div class="panel-head" style="margin-bottom:.8rem">
+        <h2>All eligible vehicles</h2>
+        <p>Ranked by composite AI score — top supplier pre-selected.</p>
+      </div>
+
+      {% for q in quotes %}
+        {% if not q.get('aiExcluded') %}
+        <div class="quote-card {% if loop.first %}ai-top{% endif %}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap">
+            <div>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem">
+                {% if loop.first %}<span style="font-size:.73rem;font-weight:700;letter-spacing:.06em;color:var(--accent);background:rgba(21,95,160,.1);padding:.2rem .65rem;border-radius:999px">✦ AI BEST MATCH</span>{% endif %}
+                {% if loop.first %}<span style="font-size:.73rem;font-weight:700;color:var(--green);background:rgba(47,108,87,.1);padding:.2rem .65rem;border-radius:999px">🏆 BEST VALUE</span>{% endif %}
+              </div>
+              <h3 style="font-family:'IBM Plex Serif',serif;margin:0">{{ q.name }}</h3>
+              <p style="margin:.25rem 0 0;color:var(--muted);font-size:.86rem">{{ q.description }}</p>
+              <div style="margin-top:.5rem;font-size:.82rem;color:var(--muted)">
+                <strong>{{ q.supplierName }}</strong>
+                &nbsp;·&nbsp; <span class="star-score">★ {{ q.supplierScore }}</span>
+                &nbsp;·&nbsp; {{ q.proximityKm }} km from pickup
+                &nbsp;·&nbsp; AI score: <strong>{{ (q.aiScore * 100)|round(1) }}%</strong>
+              </div>
+              <div style="margin-top:.4rem;display:flex;gap:.6rem;flex-wrap:wrap">
+                <span style="font-size:.76rem;background:rgba(47,108,87,.08);color:var(--green);padding:.18rem .55rem;border-radius:8px">📦 On-time: ~{{ (q.supplierScore / 5 * 97)|round|int }}%</span>
+                <span style="font-size:.76rem;background:rgba(21,95,160,.08);color:var(--accent-dark);padding:.18rem .55rem;border-radius:8px">✅ Accepts ~{{ (q.supplierScore / 5 * 95)|round|int }}% of bookings</span>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--accent-dark);font-family:'IBM Plex Serif',serif">{{ zar(q.total) }}</div>
+              <div style="font-size:.8rem;color:var(--muted)">incl. {{ zar(q.platformFee) }} platform fee</div>
+              <div style="font-size:.8rem;color:var(--muted)">{{ q.transitTime }}</div>
+            </div>
+          </div>
+          <div style="margin-top:.7rem">
+            <div style="display:flex;justify-content:space-between;font-size:.79rem;color:var(--muted);margin-bottom:.2rem">
+              <span>Load utilisation: {{ q.utilisation }}%</span>
+              {% if q.isContainer %}
+                <span>🚢 {{ q.containerType }} · Skeletal trailer · ISO container only</span>
+              {% else %}
+                <span>Max {{ "{:,}".format(q.maxWeight) }} kg · {{ q.maxCBM }} CBM · {{ q.maxPallets }} pallets</span>
+              {% endif %}
+            </div>
+            <div class="util-bar-wrap"><div class="util-bar" style="width:{{ q.utilisation }}%"></div></div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      <!-- AI-excluded (score/proximity filtered) -->
+      {% set ai_excluded = quotes|selectattr('aiExcluded')|list %}
+      {% if ai_excluded %}
+      <div style="margin-top:1rem">
+        <p style="font-weight:600;font-size:.9rem;color:var(--muted)">AI-excluded suppliers ({{ ai_excluded|length }})</p>
+        {% for q in ai_excluded %}
+        <div class="ai-excluded-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <div>
+              <strong>{{ q.name }}</strong> — {{ q.supplierName }}
+              <div style="font-size:.82rem;color:var(--muted)">{{ q.aiExclusionReason }}</div>
+            </div>
+            <span style="font-size:.88rem;color:var(--muted)">{{ zar(q.total) }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Truck-excluded (physically can't carry load) -->
+      {% if excluded %}
+      <div style="margin-top:1.2rem">
+        <div class="panel-head"><h2>Excluded vehicles</h2><p>Cannot physically carry this load — adjust cargo details to unlock.</p></div>
+        {% for ex in excluded %}
+        <div style="padding:.75rem 1rem;border:1px solid rgba(192,57,43,.2);border-radius:14px;background:rgba(192,57,43,.03);margin-bottom:.5rem">
+          <strong>{{ ex.name }}</strong>
+          <ul style="margin:.4rem 0 0;padding-left:1.2rem;font-size:.84rem;color:var(--muted)">
+            {% for r in ex.reasons %}<li>{{ r }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </section>
+
+    <!-- RIGHT: booking confirmation -->
+    <section class="panel" style="position:sticky;top:90px">
+      <div class="panel-head">
+        <h2>Confirm booking</h2>
+        <p>The AI engine has pre-selected the optimal supplier. Review and confirm.</p>
+      </div>
+
+      {% if ai_selected %}
+      <div style="background:rgba(47,108,87,.07);border:1px solid rgba(47,108,87,.2);border-radius:14px;padding:.9rem;margin-bottom:1rem">
+        <p style="margin:0 0 .3rem;font-weight:600">✦ AI-selected: {{ ai_selected.supplierName }}</p>
+        <p style="margin:0;font-size:.86rem;color:var(--muted)">{{ ai_selected.name }} &nbsp;·&nbsp; <span class="star-score">★ {{ ai_selected.supplierScore }}</span></p>
+      </div>
+
+      {% if form.get('destinationType')=='Distribution Centre' %}
+      <div class="dc-flag" style="display:flex;margin-bottom:.7rem">
+        🏭 DC delivery — slot must be met: {{ form.get('dcSlotDate') }} {{ form.get('dcSlotTime') }}
+      </div>
+      {% endif %}
+
+      <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed rgba(56,45,28,.1);font-size:.9rem">
+        <span>Supplier total</span><strong>{{ zar(ai_selected.supplierTotal) }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed rgba(56,45,28,.1);font-size:.9rem">
+        <span>Platform fee ({{ "%.0f"|format(ai_selected.platformFee / ai_selected.supplierTotal * 100) if ai_selected.supplierTotal else '' }}%)</span>
+        <strong>{{ zar(ai_selected.platformFee) }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:.7rem 0;font-size:1.1rem;font-weight:700">
+        <span>Total (ZAR)</span><span style="color:var(--accent-dark)">{{ zar(ai_selected.total) }}</span>
+      </div>
+
+      <form method="POST" action="{{ '#' }}" id="booking-form" style="margin-top:.5rem">
+        <input type="hidden" name="supplierId" value="{{ ai_selected.supplierId if ai_selected else '' }}"/>
+        <input type="hidden" name="total" id="total-hidden" value="{{ ai_selected.total if ai_selected else 0 }}"/>
+        <input type="hidden" name="paymentMethod" id="pm-hidden" value="Instant EFT"/>
+
+        <p style="font-weight:600;font-size:.9rem;margin:.8rem 0 .5rem">Select payment method</p>
+        {% for pm, icon in [('Instant EFT','🏦'),('Debit / Credit Card','💳'),('Business Wallet','👛'),('30-Day Invoice','📄')] %}
+        <label style="display:flex;align-items:center;gap:.8rem;border:1.5px solid var(--line);border-radius:14px;padding:.75rem;background:rgba(255,255,255,.5);margin-bottom:.5rem;cursor:pointer;font-weight:normal;transition:border-color .15s" onclick="selectPM(this,'{{ pm }}')">
+          <span>{{ icon }}</span>
+          <div><strong>{{ pm }}</strong></div>
+        </label>
+        {% endfor %}
+
+        <button type="submit" class="primary-button wide-button" style="font-size:1rem;padding:1rem;margin-top:.8rem">
+          Place order &amp; notify supplier →
+        </button>
+      </form>
+      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:.6rem 0 0">
+        Waybill PDF with QR code generated within 60 seconds of supplier acceptance.
+        Supplier has {{ ai_settings.supplierResponseWindowHours }} hours to accept before auto-reassignment.
+      </p>
+      {% else %}
+      <div class="empty-card" style="padding:1.5rem;text-align:center">
+        <p style="color:var(--muted)">No eligible supplier found for this load. Adjust cargo details or contact support.</p>
+        <a href="{{ url_for('shipper.new_booking') }}" class="ghost-button" style="display:inline-block;margin-top:.8rem">← Edit shipment</a>
+      </div>
+      {% endif %}
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function selectPM(label, pm) {
+  document.querySelectorAll('#booking-form label').forEach(l => {
+    l.style.borderColor = 'var(--line)';
+    l.style.background = 'rgba(255,255,255,.5)';
+  });
+  label.style.borderColor = 'var(--accent)';
+  label.style.background = 'rgba(21,95,160,.07)';
+  document.getElementById('pm-hidden').value = pm;
+}
+// Pre-select first option on load
+window.addEventListener('DOMContentLoaded', function() {
+  var first = document.querySelector('#booking-form label');
+  if (first) selectPM(first, 'Instant EFT');
+});
+</script>
+{% endblock %}

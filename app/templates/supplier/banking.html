@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Supplier portal</p><h1>Banking &amp; earnings</h1><p class="topbar-copy">Manage your payout bank account and track earnings, commissions, and pending payouts.</p></div></div>
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <p class="stat-label">Total earned (all time)</p>
+      <strong>{{ zar(earnings.total_gross) }}</strong>
+      <p class="muted">Gross freight revenue</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Platform commission deducted</p>
+      <strong style="color:#c0392b">- {{ zar(earnings.total_commission) }}</strong>
+      <p class="muted">{{ platform_fee_pct }}% platform fee</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Net paid out</p>
+      <strong style="color:var(--green)">{{ zar(earnings.total_paid) }}</strong>
+      <p class="muted">Transferred to your account</p>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Pending payout</p>
+      <strong style="color:var(--accent)">{{ zar(earnings.total_pending) }}</strong>
+      <p class="muted">Awaiting admin release</p>
+    </article>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Bank account details</h2><p>Payouts are processed by admin. Ensure your details are correct and verified.</p></div>
+      <form method="POST" action="{{ '#' }}">
+        <div class="form-grid">
+          <label>Account holder name<input name="accountHolder" value="{{ banking.accountHolder }}" placeholder="Full legal name of account holder" required/></label>
+          <label>Bank name
+            <select name="bank">
+              {% set banks = ['Absa','Capitec Bank','First National Bank (FNB)','Nedbank','Standard Bank','African Bank','Bidvest Bank','Discovery Bank','Investec','TymeBank'] %}
+              {% for b in banks %}
+              <option {% if banking.bank==b %}selected{% endif %}>{{ b }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Branch code<input name="branchCode" value="{{ banking.branchCode }}" placeholder="e.g. 051001"/></label>
+          <label>Account type
+            <select name="accountType">
+              <option {% if banking.accountType=='Current / Cheque' %}selected{% endif %}>Current / Cheque</option>
+              <option {% if banking.accountType=='Savings' %}selected{% endif %}>Savings</option>
+              <option {% if banking.accountType=='Transmission' %}selected{% endif %}>Transmission</option>
+            </select>
+          </label>
+          <label class="form-span">Account number<input name="accountNumber" value="{{ banking.accountNumber }}" placeholder="Account number" type="password" autocomplete="off"/></label>
+        </div>
+        <div style="background:rgba(21,95,160,.06);border-radius:14px;padding:.8rem;margin:.6rem 0">
+          <p style="margin:0;font-size:.82rem;color:var(--muted)">🔒 Banking details are encrypted at rest. Admin requires a verification step before your first payout.</p>
+        </div>
+        <button type="submit" class="primary-button wide-button">Save banking details</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Earnings per booking</h2><p>A breakdown of every completed booking and its payout status.</p></div>
+      <div class="table-like">
+        {% for item in earnings.breakdown %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.5rem">
+          <div style="flex:1">
+            <strong>{{ item.ref }}</strong>
+            <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">{{ item.route }}</p>
+            <p style="font-size:.78rem;margin:.1rem 0 0;color:var(--muted)">{{ item.date }}</p>
+          </div>
+          <div style="text-align:right">
+            <p style="margin:0;font-size:.88rem">Gross: <strong>{{ zar(item.gross) }}</strong></p>
+            <p style="margin:.1rem 0;font-size:.82rem;color:#c0392b">Fee: - {{ zar(item.commission) }}</p>
+            <p style="margin:.1rem 0;font-size:.9rem;color:var(--green)">Net: <strong>{{ zar(item.net) }}</strong></p>
+          </div>
+          <span class="pill {% if item.payout_status=='Paid' %}badge{% endif %}" style="align-self:center">{{ item.payout_status }}</span>
+        </div>
+        {% else %}
+        <div class="empty-card" style="padding:1.5rem;text-align:center">
+          <p class="muted">No completed bookings yet. Earnings will appear here after delivery confirmation.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

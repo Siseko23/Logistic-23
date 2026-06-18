@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · <a href="{{ url_for('supplier.bookings') }}" style="color:var(--accent);text-decoration:none">Report notifications</a> · {{ notif.id }}</p>
+      <h1>{{ notif.category }}</h1>
+      <p class="topbar-copy">Booking {{ notif.bookingRef }} &middot; Notified {{ notif.sentAt }}</p>
+    </div>
+    <div style="align-self:flex-start;margin-top:.5rem">
+      <span class="pill {% if notif.status=='Responded' %}badge{% endif %}"
+        style="{% if notif.status=='Unread' %}background:rgba(155,28,28,.12);color:#9b1c1c{% elif notif.status=='Read' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+        {{ notif.status }}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- Left: the notification message + response -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Message from FreightFlow</h2>
+          <p>Sent by {{ notif.sentBy }} on {{ notif.sentAt }}</p>
+        </div>
+        <div style="background:rgba(47,108,87,.06);border:1px solid rgba(47,108,87,.18);border-radius:14px;padding:1.1rem 1.25rem;line-height:1.65;font-size:.92rem">
+          <p style="margin:0 0 .4rem;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--accent)">🛡️ FreightFlow Support</p>
+          {{ notif.message }}
+        </div>
+      </section>
+
+      {% if notif.supplierResponse %}
+      <section class="panel">
+        <div class="panel-head"><h2>Your response</h2><p>Submitted {{ notif.respondedAt }}</p></div>
+        <div style="background:rgba(244,249,255,.9);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.25rem;line-height:1.65;font-size:.92rem">
+          <p style="margin:0 0 .4rem;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)">🏢 Your company</p>
+          {{ notif.supplierResponse }}
+        </div>
+        <p class="muted" style="font-size:.8rem;margin:.8rem 0 0">✅ Response received by FreightFlow on {{ notif.respondedAt }}. A support agent will review and follow up if needed.</p>
+      </section>
+      {% else %}
+      <section class="panel" style="border:1px solid rgba(155,28,28,.2)">
+        <div class="panel-head">
+          <h2>Your response</h2>
+          <p style="color:#9b1c1c;font-weight:600">⏱ Response required</p>
+        </div>
+        <form method="POST" action="{{ '#' }}">
+          <textarea name="response" rows="5" required
+            placeholder="Provide your account of events, any relevant documentation details, or acknowledgement of responsibility. Be specific — include driver name, vehicle registration, and delivery timestamp if applicable."
+            style="width:100%;resize:vertical;border-radius:14px;border:1px solid var(--line);padding:.75rem 1rem;background:rgba(255,255,255,.9);font-size:.9rem;line-height:1.55;margin-bottom:.75rem"></textarea>
+          <div style="display:flex;gap:.6rem;justify-content:flex-end;align-items:center">
+            <p class="muted" style="font-size:.8rem;flex:1">Your response is visible to FreightFlow support only. The shipper does not see it directly.</p>
+            <button type="submit" class="primary-button">Submit response →</button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+    </div>
+
+    <!-- Right: case details + linked report summary -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Notification details</h2></div>
+        <div class="stack" style="gap:.4rem">
+          <div class="summary-row"><span>Notification ID</span><strong>{{ notif.id }}</strong></div>
+          <div class="summary-row"><span>Linked case</span><strong>{{ notif.reportId }}</strong></div>
+          <div class="summary-row"><span>Booking reference</span><strong>{{ notif.bookingRef }}</strong></div>
+          <div class="summary-row"><span>Category</span><strong>{{ notif.category }}</strong></div>
+          <div class="summary-row"><span>Sent by</span><strong>{{ notif.sentBy }}</strong></div>
+          <div class="summary-row"><span>Sent at</span><strong>{{ notif.sentAt }}</strong></div>
+          <div class="summary-row"><span>Status</span>
+            <span class="pill {% if notif.status=='Responded' %}badge{% endif %}"
+              style="{% if notif.status=='Unread' %}background:rgba(155,28,28,.12);color:#9b1c1c{% elif notif.status=='Read' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+              {{ notif.status }}
+            </span>
+          </div>
+          {% if notif.respondedAt %}
+          <div class="summary-row"><span>Responded at</span><strong>{{ notif.respondedAt }}</strong></div>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if report %}
+      <section class="panel">
+        <div class="panel-head"><h2>Case summary</h2><p>FreightFlow internal overview — for your reference</p></div>
+        <div class="stack" style="gap:.4rem">
+          <div class="summary-row"><span>Report status</span>
+            <span class="pill {% if report.status=='Resolved' %}badge{% endif %}"
+              style="{% if report.status=='In Progress' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+              {{ report.status }}
+            </span>
+          </div>
+          <div class="summary-row"><span>Priority</span>
+            <strong style="color:{% if report.priority=='Critical' %}#9b1c1c{% elif report.priority=='Urgent' %}#7a5800{% else %}var(--accent){% endif %}">
+              {{ report.priority }}
+            </strong>
+          </div>
+          {% if report.disputeAmount %}
+          <div class="summary-row"><span>Amount in dispute</span><strong style="color:#9b1c1c">R {{ "{:,.0f}".format(report.disputeAmount) }}</strong></div>
+          {% endif %}
+          <div class="summary-row"><span>Opened</span><strong>{{ report.createdAt }}</strong></div>
+          {% if report.resolvedAt %}
+          <div class="summary-row"><span>Resolved</span><strong>{{ report.resolvedAt }}</strong></div>
+          {% endif %}
+        </div>
+        <div style="margin-top:.8rem;padding:.8rem 1rem;background:rgba(0,0,0,.03);border-radius:10px;font-size:.85rem;line-height:1.5;color:var(--muted)">
+          <strong style="color:var(--text)">Issue description:</strong><br>
+          {{ report.description }}
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.15)">
+        <div class="panel-head"><h2>Important notes</h2></div>
+        <ul style="margin:0;padding:0 0 0 1.2rem;font-size:.86rem;line-height:1.7;color:var(--muted)">
+          <li>Shippers never contact you directly — all communication goes through FreightFlow.</li>
+          <li>Failing to respond within 24 hours may result in a performance score deduction.</li>
+          <li>Acknowledging responsibility early leads to faster resolution and smaller penalties.</li>
+          <li>If you have POD documentation, delivery notes, or driver reports, mention them in your response.</li>
+        </ul>
+      </section>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

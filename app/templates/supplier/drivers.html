@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Driver management</h1>
+      <p class="topbar-copy">Add drivers and generate their login credentials for the driver platform. Each driver is assigned to a vehicle — when they log in, their job is already waiting.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Add new driver</h2>
+        <p>Create a driver account and assign them to a vehicle. The driver receives a PIN to log into the driver platform — their vehicle and any active bookings are pre-loaded on first login.</p>
+      </div>
+      <form method="POST" action="{{ '#' }}">
+        <div class="form-grid compact-two">
+          <label>Full name<input name="name" placeholder="e.g. Sipho Dlamini" required/></label>
+          <label>SA ID number<input name="idNumber" placeholder="13-digit ID number" required/></label>
+          <label>Phone number<input name="phone" placeholder="+27 8x xxx xxxx" required/></label>
+          <label>Email (optional)<input name="email" type="email" placeholder="driver@email.com"/></label>
+          <label>License number<input name="licenseNo" placeholder="e.g. KZN-2891-A" required/></label>
+          <label>License type
+            <select name="licenseType">
+              <option>Code 14 (EC) — Articulated</option>
+              <option>Code 10 (C) — Rigid truck</option>
+              <option>Code 8 (B) — Light motor vehicle</option>
+            </select>
+          </label>
+          <label>License expiry date<input name="licenseExpiry" type="date" required/></label>
+          <label>Assign to vehicle
+            <select name="vehicleId" required>
+              <option value="">Select vehicle…</option>
+              {% for v in fleet %}
+              <option value="{{ v.id }}" {% if v.driverId %}disabled{% endif %}>
+                {{ v.type }} — {{ v.reg }}{% if v.driverId %} (assigned){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="form-span">Driver login PIN (4 digits)
+            <input name="pin" type="password" maxlength="4" minlength="4" placeholder="4-digit PIN the driver will use to log in" required/>
+          </label>
+        </div>
+
+        <div style="background:rgba(21,95,160,.07);border-radius:14px;padding:.85rem;margin:.6rem 0;border:1px solid rgba(21,95,160,.15)">
+          <p style="margin:0;font-size:.85rem"><strong>🔑 How driver login works:</strong> The driver uses their phone number + this PIN to log into the driver platform. Their vehicle and any assigned bookings are pre-loaded automatically. Share the PIN securely with the driver — it can be changed from this page at any time.</p>
+        </div>
+        <button type="submit" class="primary-button wide-button">Create driver account</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Your drivers</h2></div>
+      <div class="table-like">
+        {% for d in drivers %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+          <div style="flex:1;min-width:140px">
+            <strong>{{ d.name }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ d.phone }}</p>
+            <p style="font-size:.78rem;margin:.1rem 0 0;color:var(--accent)">{{ d.licenseType }}</p>
+          </div>
+          <div style="flex:1">
+            <p style="margin:0;font-size:.88rem">{{ d.vehicleType }} · {{ d.vehicleReg }}</p>
+            <p style="font-size:.78rem;margin:.1rem 0 0;
+              color:{% if d.licenseExpiry and d.licenseExpiry < '2026-07-01' %}#c0392b{% else %}var(--muted){% endif %}">
+              Lic expires: {{ d.licenseExpiry }}
+            </p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
+            <span class="pill {% if d.status=='Active' %}badge{% endif %}"
+              style="{% if d.status=='License Expiring' %}background:rgba(255,200,0,.18);color:#7a5800{% endif %}">
+              {{ d.status }}
+            </span>
+            <form method="POST" action="{{ '#' }}" style="display:inline">
+              <button type="submit" class="ghost-button" style="padding:.35rem .8rem;font-size:.78rem">Reset PIN</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .chat-shell{display:flex;flex-direction:column;height:calc(100vh - 220px);min-height:500px;background:var(--paper);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+  .chat-header{background:linear-gradient(135deg,var(--accent-dark),#0e3a6b);padding:1rem 1.5rem;color:#fff;display:flex;align-items:center;gap:.8rem}
+  .ai-avatar{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+  .chat-messages{flex:1;overflow-y:auto;padding:1.2rem;display:flex;flex-direction:column;gap:.85rem}
+  .msg{display:flex;gap:.7rem;align-items:flex-end;max-width:82%}
+  .msg.user{align-self:flex-end;flex-direction:row-reverse}
+  .msg-bubble{padding:.75rem 1.1rem;border-radius:18px;font-size:.93rem;line-height:1.5}
+  .msg.ai .msg-bubble{background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg.user .msg-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .msg-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+  .msg.ai .msg-avatar{background:var(--accent-dark);color:#fff}
+  .msg.user .msg-avatar{background:#eee}
+  .chat-input-row{border-top:1px solid var(--line);padding:.9rem 1.2rem;display:flex;gap:.7rem;align-items:center}
+  .chat-input{flex:1;border:1px solid var(--line);border-radius:999px;padding:.7rem 1.2rem;font-size:.93rem;outline:none;background:var(--bg)}
+  .chat-input:focus{border-color:var(--accent)}
+  .send-btn{background:var(--accent);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;transition:transform .15s}
+  .send-btn:hover{transform:scale(1.08)}
+  .quick-chips{display:flex;flex-wrap:wrap;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid var(--line)}
+  .q-chip{border:1px solid var(--line);border-radius:999px;padding:.35rem .85rem;font-size:.8rem;background:var(--bg);cursor:pointer;transition:background .15s}
+  .q-chip:hover{background:rgba(21,95,160,.08);border-color:var(--accent)}
+  .typing-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+  .typing-dot:nth-child(2){animation-delay:.2s}
+  .typing-dot:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>FreightFlow AI Assistant</h1>
+      <p class="topbar-copy">Ask anything about your bookings, costs, suppliers, or logistics strategy.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.ai_insights') }}" class="ghost-button">✦ AI Insights</a>
+    </div>
+  </div>
+
+  <div class="chat-shell">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="ai-avatar">✦</div>
+      <div>
+        <strong>FreightFlow AI</strong>
+        <p style="margin:0;font-size:.8rem;opacity:.8">Powered by your logistics data · Always on</p>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:.4rem;font-size:.8rem;opacity:.8">
+        <div style="width:8px;height:8px;border-radius:50%;background:#2ecc71"></div> Online
+      </div>
+    </div>
+
+    <!-- Quick chips -->
+    <div class="quick-chips">
+      <span class="q-chip" onclick="sendQuick('Show me my delayed bookings')">🚛 Delayed bookings</span>
+      <span class="q-chip" onclick="sendQuick('Find the cheapest supplier')">💰 Cheapest supplier</span>
+      <span class="q-chip" onclick="sendQuick('Why was this supplier ranked first?')">✦ Supplier ranking</span>
+      <span class="q-chip" onclick="sendQuick('What are my busiest routes?')">🗺️ Busiest routes</span>
+      <span class="q-chip" onclick="sendQuick('How much have I spent this year?')">📊 Total spend</span>
+      <span class="q-chip" onclick="sendQuick('What savings opportunities do I have?')">💡 Savings</span>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="msgArea">
+      <div class="msg ai">
+        <div class="msg-avatar">✦</div>
+        <div class="msg-bubble">
+          Hello! I'm the FreightFlow AI assistant. I have access to your booking history, spend data, supplier scores, and route analytics.<br><br>
+          Ask me anything — delayed shipments, cost breakdowns, supplier recommendations, or savings opportunities.
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text" placeholder="Ask anything about your logistics..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send-btn" onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function sendQuick(q) {
+  document.getElementById('chatInput').value = q;
+  sendMsg();
+}
+
+function addMsg(text, type) {
+  const area = document.getElementById('msgArea');
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.innerHTML = `<div class="msg-avatar">${type==='ai'?'✦':'👤'}</div><div class="msg-bubble">${text}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const area = document.getElementById('msgArea');
+  const div = document.createElement('div');
+  div.className = 'msg ai'; div.id = 'typing';
+  div.innerHTML = `<div class="msg-avatar">✦</div><div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  addMsg(q, 'user');
+  addTyping();
+  try {
+    const res = await fetch('/api/ai-assistant', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    const data = await res.json();
+    document.getElementById('typing')?.remove();
+    addMsg(data.answer, 'ai');
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMsg('Sorry, I encountered an error. Please try again.', 'ai');
+  }
+}
+</script>
+{% endblock %}

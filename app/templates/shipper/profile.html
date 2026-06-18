@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Shipper portal</p><h1>Company profile</h1><p class="topbar-copy">Update company details, upload compliance documents, and manage your profile picture.</p></div></div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Company details</h2></div>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+          <label>Company name<input name="companyName" value="Ubuntu Retail Group" placeholder="Enter company name"/></label>
+          <label>Registration number<input name="registrationNumber" value="2018/423119/07" placeholder="Registration number"/></label>
+          <label>Contact person<input name="contactPerson" value="Lerato Mokoena" placeholder="Primary contact name"/></label>
+          <label>Email address<input name="email" value="lerato@ubuntu-retail.co.za" placeholder="name@company.com"/></label>
+          <label>Phone number<input name="phone" value="+27 31 555 0192" placeholder="+27 xx xxx xxxx"/></label>
+          <label>Account status<input value="Verified — Business account" readonly/></label>
+          <label class="form-span">Billing address<textarea name="billingAddress" rows="3">14 Electron Road, Durban North, KwaZulu-Natal, 4051</textarea></label>
+        </div>
+        <button type="submit" class="primary-button wide-button">Save company profile</button>
+      </form>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Company logo / profile picture</h2><p>Upload your company logo (PNG or JPG, max 2 MB). Shown on waybills and the platform profile.</p></div>
+        <form method="POST" enctype="multipart/form-data" action="/shipper/profile/upload-picture">
+          <div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1rem">
+            <div style="width:72px;height:72px;border-radius:18px;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;color:var(--accent);border:1px solid var(--line)">UR</div>
+            <div>
+              <p style="margin:0;font-weight:600">Ubuntu Retail Group</p>
+              <p class="muted" style="margin:.2rem 0 0;font-size:.85rem">No logo uploaded yet</p>
+            </div>
+          </div>
+          <label style="display:grid;gap:.45rem;font-weight:600;border:2px dashed var(--line);border-radius:18px;padding:1.2rem;background:rgba(255,255,255,.42);text-align:center;cursor:pointer">
+            <span style="font-size:1.5rem">📁</span>
+            <span>Click to choose logo file</span>
+            <span class="muted" style="font-size:.82rem">PNG or JPG · Max 2 MB</span>
+            <input type="file" name="picture" accept=".png,.jpg,.jpeg" style="display:none" onchange="document.getElementById('pic-name').textContent=this.files[0]?.name||''"/>
+          </label>
+          <p id="pic-name" style="font-size:.82rem;color:var(--accent);margin:.4rem 0 0;text-align:center"></p>
+          <button type="submit" class="ghost-button wide-button" style="margin-top:.6rem">Upload logo</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Company documents</h2><p>Upload CIPC registration, tax clearance, and BEE certificate for account verification.</p></div>
+        <form method="POST" enctype="multipart/form-data" action="/shipper/profile/upload-doc">
+          <div class="form-grid compact-two" style="margin-bottom:.8rem">
+            <label>Document type
+              <select name="docType">
+                <option>CIPC registration</option>
+                <option>Tax clearance certificate</option>
+                <option>BEE certificate</option>
+                <option>Letter of good standing</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label>Expiry date (if applicable)<input type="date" name="expiry"/></label>
+            <label class="form-span">PDF file (required)
+              <input type="file" name="document" accept=".pdf" required/>
+            </label>
+          </div>
+          <button type="submit" class="primary-button wide-button">Upload document</button>
+        </form>
+
+        <div class="table-like" style="margin-top:1rem">
+          {% for doc in shipper_docs %}
+          <div class="table-row">
+            <div>
+              <strong>{{ doc.name }}</strong>
+              <p class="muted" style="margin:.2rem 0 0">{{ doc.uploadedAt }}</p>
+            </div>
+            <span class="pill {% if doc.status=='Verified' %}badge{% endif %}">{{ doc.status }}</span>
+          </div>
+          {% else %}
+          <div class="empty-card" style="padding:1.5rem;text-align:center">
+            <p class="muted">No documents uploaded yet.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

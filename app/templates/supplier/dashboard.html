@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div><p class="eyebrow">Supplier portal</p><h1>{{ user }}</h1><p class="topbar-copy">Fleet status, pending bookings, and rate card overview.</p></div>
+  </div>
+  <div class="stats-grid">
+    <article class="stat-card"><p class="stat-label">Performance score</p><strong style="color:{{ 'var(--green)' if supplier.score >= 4 else '#e8a000' if supplier.score >= 2.5 else '#c0392b' }}">★ {{ supplier.score }} / 5.0</strong><p class="muted"><a href="{{ url_for('supplier.performance') }}">View full history →</a></p></article>
+    <article class="stat-card"><p class="stat-label">Approval status</p><strong>Approved</strong><p class="muted">KZN / Gauteng routes</p></article>
+    <article class="stat-card"><p class="stat-label">Fleet units</p><strong>{{ fleet|length }}</strong><p class="muted">Availability feeds matching engine</p></article>
+    <article class="stat-card"><p class="stat-label">Pending responses</p><strong>{{ pending|length }}</strong><p class="muted">Action required inside SLA window</p></article>
+    <article class="stat-card"><p class="stat-label">Rate versions</p><strong>{{ rate_cards|length }}</strong><p class="muted">Historical cards retained</p></article>
+  </div>
+
+  {% if pending %}
+  <section class="panel">
+    <div class="panel-head"><h2>Pending bookings</h2><p>Accept or reject within the response window to avoid auto-reassignment.</p></div>
+    <div class="table-like">
+      {% for b in pending %}
+      <div class="action-row-card">
+        <div>
+          <strong>{{ b.ref }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+          <p class="tiny-note">{{ b.shipper }} | {{ b.supplierResponseWindow }}</p>
+        </div>
+        <div class="button-row">
+          <button class="ghost-button" onclick="alert('Booking rejected — next supplier notified.')">Reject</button>
+          <button class="primary-button" onclick="alert('Booking accepted! Shipper has been notified.')">Accept</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Fleet summary</h2></div>
+      <div class="table-like">
+        {% for v in fleet %}
+        <div class="table-row">
+          <div><strong>{{ v.type }}</strong><p class="muted">{{ v.reg }}</p></div>
+          <div><p>{{ v.payload }}</p><p class="muted">{{ v.cbm }}</p></div>
+          <span class="pill">{{ v.availability }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Active rate cards</h2></div>
+      <div class="stack">
+        {% for r in rate_cards %}
+        <article class="inline-card">
+          <div class="notification-head">
+            <strong>{{ r.route }}</strong>
+            <span class="pill">{{ r.version }}</span>
+          </div>
+          <p class="muted" style="margin:.4rem 0 0;font-size:.88rem">{{ r.vehicleType }} | Base R {{ "{:,.0f}".format(r.baseRate) }} | Min R {{ "{:,.0f}".format(r.minimumCharge) }} | Fuel {{ r.fuelSurcharge }}%</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

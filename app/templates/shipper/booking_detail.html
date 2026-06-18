@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .status-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:700;padding:.3rem .85rem;border-radius:999px}
+  .status-pill.delivered{background:rgba(47,108,87,.12);color:var(--green)}
+  .status-pill.transit{background:rgba(21,95,160,.12);color:var(--accent-dark)}
+  .status-pill.confirmed{background:rgba(255,200,0,.18);color:#7a5800}
+  .status-pill.pending{background:rgba(192,57,43,.1);color:#c0392b}
+  .scan-event{display:flex;align-items:flex-start;gap:.9rem;padding:.8rem 0;border-bottom:1px dashed rgba(56,45,28,.1)}
+  .scan-event:last-child{border-bottom:none}
+  .scan-dot{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+  .scan-dot.done{background:rgba(47,108,87,.15);color:#1e5e3a}
+  .scan-dot.active-dot{background:rgba(21,95,160,.12);color:#0f4676}
+  .scan-dot.future{background:rgba(0,0,0,.05);color:#aaa}
+  .info-row{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed rgba(56,45,28,.08);font-size:.9rem}
+  .info-row:last-child{border-bottom:none}
+  .dc-flag{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:600;color:#7a5800;background:rgba(255,200,0,.18);padding:.3rem .8rem;border-radius:999px}
+
+  /* ── Star rating ── */
+  .star-picker{display:flex;gap:.3rem;margin:.6rem 0}
+  .star-picker input[type=radio]{display:none}
+  .star-picker label{font-size:1.8rem;cursor:pointer;color:#d0d8e4;transition:color .15s;line-height:1}
+  .star-picker input[type=radio]:checked ~ label,.star-picker label:hover,.star-picker label:hover ~ label{color:#d4a017}
+  .star-picker{flex-direction:row-reverse;justify-content:flex-end}
+  .star-picker label:hover,.star-picker label:hover ~ label{color:#d4a017}
+  .star-picker input:checked ~ label{color:#d4a017}
+  .event-chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:.35rem .8rem;background:rgba(255,255,255,.6);cursor:pointer;transition:border-color .15s,background .15s}
+  .event-chip:hover{border-color:var(--accent);background:#e6f1fb}
+  .event-chip.selected{border-color:#c0392b;background:rgba(192,57,43,.08);color:#c0392b}
+  .rating-display{display:flex;gap:.2rem;font-size:1.1rem}
+  .rating-display .full{color:#d4a017}
+  .rating-display .empty{color:#d0d8e4}
+
+  /* ── Waybill ── */
+  .waybill-wrap{background:#fff;border:2px solid #12253f;border-radius:4px;font-family:'Space Grotesk',sans-serif;color:#12253f;overflow:hidden;box-shadow:0 8px 32px rgba(18,37,63,.15)}
+  .wb-header{background:#12253f;color:#fff;padding:.8rem 1.2rem;display:flex;justify-content:space-between;align-items:center}
+  .wb-brand{display:flex;align-items:center;gap:.7rem}
+  .wb-brand-mark{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#155fa0,#5f9dd5);display:grid;place-items:center;font-weight:700;font-size:.9rem;color:#fff}
+  .wb-ref-block{text-align:right}
+  .wb-ref-label{font-size:.68rem;opacity:.6;text-transform:uppercase;letter-spacing:.1em}
+  .wb-ref-number{font-size:1.3rem;font-weight:700;letter-spacing:.04em}
+  .wb-body{padding:1rem 1.2rem}
+  .wb-section-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#5f7692;margin:.9rem 0 .4rem;border-bottom:1px solid #e8edf5;padding-bottom:.25rem}
+  .wb-addr-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.3rem}
+  .wb-addr-box{border:1.5px solid #d0dae8;border-radius:6px;padding:.7rem .8rem}
+  .wb-addr-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#5f7692;margin-bottom:.35rem}
+  .wb-addr-company{font-size:.95rem;font-weight:700;line-height:1.3}
+  .wb-addr-line{font-size:.82rem;line-height:1.5;color:#3a4d62}
+  .wb-addr-contact{font-size:.79rem;margin-top:.35rem;padding-top:.35rem;border-top:1px dashed #d0dae8;color:#3a4d62}
+  .wb-cargo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:.4rem 0}
+  .wb-cargo-cell{border:1px solid #d0dae8;border-radius:5px;padding:.5rem .6rem;text-align:center}
+  .wb-cargo-val{font-size:1.05rem;font-weight:700}
+  .wb-cargo-key{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:#5f7692;margin-top:.15rem}
+  .wb-qr-row{display:flex;align-items:center;gap:1.2rem;padding:.9rem;background:#f5f8ff;border:1.5px solid #d0dae8;border-radius:8px;margin:.6rem 0}
+  .wb-qr-title{font-weight:700;font-size:.9rem;margin-bottom:.25rem}
+  .wb-qr-line{font-size:.77rem;color:#5f7692;margin:.1rem 0}
+  .wb-qr-url{font-family:monospace;font-size:.72rem;color:#155fa0;word-break:break-all}
+  .wb-dc-box{background:#fffbe6;border:1.5px solid #e8a000;border-radius:6px;padding:.6rem .8rem;margin:.5rem 0;font-size:.83rem}
+  .wb-footer{background:#f5f8ff;border-top:1.5px solid #d0dae8;padding:.6rem 1.2rem;display:flex;justify-content:space-between;align-items:center;font-size:.74rem;color:#5f7692}
+  .wb-sig-row{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:.5rem}
+  .wb-sig-box{border-top:1.5px solid #12253f;padding-top:.3rem;font-size:.72rem;color:#5f7692;text-align:center;margin-top:1.5rem}
+  .print-btn{display:inline-flex;align-items:center;gap:.5rem;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:.7rem 1.4rem;font:inherit;font-size:.92rem;font-weight:600;cursor:pointer;margin-bottom:1rem;transition:transform .2s}
+  .print-btn:hover{transform:translateY(-1px)}
+  @media print{body *{visibility:hidden}.waybill-wrap,.waybill-wrap *{visibility:visible}.waybill-wrap{position:fixed;top:0;left:0;width:100%;box-shadow:none;border:none}.print-btn,.no-print{display:none!important}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · booking detail</p>
+      <h1>{{ booking.ref }}</h1>
+      <p class="topbar-copy">{{ booking.route }}</p>
+    </div>
+    <div style="display:flex;gap:.7rem;align-items:flex-start;flex-wrap:wrap" class="no-print">
+      {% set sc = booking.status %}
+      <span class="status-pill {{ 'delivered' if sc=='Delivered' else 'transit' if sc=='In Transit' else 'confirmed' if sc=='Confirmed' else 'pending' }}">
+        {{ sc }}
+      </span>
+      {% if booking.waybillGenerated %}
+      <a href="#waybill" class="primary-button" style="display:inline-flex;align-items:center;gap:.5rem">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M4 4h6M4 6.5h6M4 9h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        View waybill
+      </a>
+      <a href="{{ '#' }}" target="_blank" class="ghost-button" style="display:inline-flex;align-items:center;gap:.4rem">📄 Download waybill</a>
+      {% endif %}
+      {% if booking.status == 'In Transit' %}
+      <button onclick="copyPublicLink()" class="ghost-button" style="display:inline-flex;align-items:center;gap:.4rem">🔗 Share tracking</button>
+      {% endif %}
+
+      <a href="{{ url_for('shipper.bookings') }}" class="ghost-button">← All bookings</a>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- LEFT: booking info + scan events + driver -->
+    <div class="stack">
+
+      <section class="panel">
+        <div class="panel-head"><h2>Booking details</h2></div>
+        {% if booking.destinationType == 'Distribution Centre' %}
+        <div style="margin-bottom:.8rem">
+          <span class="dc-flag">DC Delivery · {{ booking.dcSlotDate }} · {{ booking.dcSlotTime }}</span>
+          {% if booking.dcBookingRef %}<p class="muted" style="font-size:.82rem;margin:.3rem 0 0">DC Ref: {{ booking.dcBookingRef }}</p>{% endif %}
+        </div>
+        {% endif %}
+        <div>
+          <div class="info-row"><span class="muted">Supplier</span><strong>{{ booking.supplier }}</strong></div>
+          <div class="info-row"><span class="muted">Driver</span><strong>{{ booking.driverName }}</strong></div>
+          <div class="info-row"><span class="muted">Vehicle</span><strong>{{ booking.vehicleReg }}</strong></div>
+          <div class="info-row"><span class="muted">Destination type</span><strong>{{ booking.destinationType }}</strong></div>
+          <div class="info-row"><span class="muted">Commodity</span><strong>{{ booking.commodity }}</strong></div>
+          <div class="info-row"><span class="muted">Units</span><strong>{{ booking.pieces }} {{ booking.unitType }}</strong></div>
+          <div class="info-row"><span class="muted">Value</span><strong>{{ zar(booking.value) }}</strong></div>
+          <div class="info-row"><span class="muted">AI score</span><strong>{{ booking.aiScore }}</strong></div>
+          <div class="info-row"><span class="muted">Booking created</span><strong>{{ booking.createdAt }}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Shipment status</h2></div>
+        <div>
+          <div class="scan-event">
+            <div class="scan-dot done">✓</div>
+            <div><strong>Booking confirmed</strong><p class="muted" style="font-size:.85rem;margin:.2rem 0 0">{{ booking.createdAt }}</p></div>
+          </div>
+          <div class="scan-event">
+            {% if booking.collectedAt %}
+            <div class="scan-dot done">✓</div>
+            <div><strong>Cargo collected</strong><p class="muted" style="font-size:.85rem;margin:.2rem 0 0">{{ booking.collectedAt }}</p></div>
+            {% else %}
+            <div class="scan-dot future">○</div>
+            <div><strong style="color:var(--muted)">Awaiting collection</strong></div>
+            {% endif %}
+          </div>
+          <div class="scan-event">
+            {% if booking.deliveredAt %}
+            <div class="scan-dot done">✓</div>
+            <div><strong>Delivered</strong><p class="muted" style="font-size:.85rem;margin:.2rem 0 0">{{ booking.deliveredAt }}</p></div>
+            {% else %}
+            <div class="scan-dot future">○</div>
+            <div><strong style="color:var(--muted)">Delivery pending</strong></div>
+            {% endif %}
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:.8rem;padding-top:.8rem;border-top:1px dashed var(--line)">
+          Real-time GPS tracking is managed by your supplier. Contact your supplier for live location updates.
+        </p>
+      </section>
+
+      <!-- Driver card -->
+      <section class="panel">
+        <div class="panel-head"><h2>Assigned driver</h2></div>
+        <div style="display:flex;align-items:center;gap:1rem;padding:.5rem 0">
+          <div style="width:48px;height:48px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:600;color:#0C447C;flex-shrink:0">
+            {{ booking.driverName.split()[0][0] }}{{ booking.driverName.split()[-1][0] }}
+          </div>
+          <div style="flex:1">
+            <strong>{{ booking.driverName }}</strong>
+            <p class="muted" style="font-size:.85rem;margin:.2rem 0 0">{{ booking.vehicleReg }} · {{ booking.supplier }}</p>
+            <p style="font-size:.82rem;margin:.2rem 0 0"><a href="tel:{{ booking.driverPhone }}" style="color:var(--accent)">{{ booking.driverPhone }}</a></p>
+          </div>
+        </div>
+        <div style="margin-top:.6rem;font-size:.82rem;color:var(--muted)">
+          <p>Collection contact: <strong style="color:var(--text)">{{ booking.collectionContact }}</strong> · {{ booking.collectionPhone }}</p>
+          <p style="margin-top:.3rem">Delivery contact: <strong style="color:var(--text)">{{ booking.deliveryContact }}</strong> · {{ booking.deliveryPhone }}</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT: rating + report event -->
+    <div class="stack">
+
+      <!-- ── SERVICE RATING ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Rate this delivery</h2>
+          <p>Your rating feeds into the supplier's AI selection score and helps improve the platform for everyone.</p>
+        </div>
+
+        {% if booking.rating %}
+        <!-- Already rated -->
+        <div style="background:rgba(47,108,87,.08);border:1px solid rgba(47,108,87,.2);border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem">
+          <p style="font-size:.82rem;font-weight:600;color:var(--green);margin:0 0 .4rem">Your rating submitted</p>
+          <div class="rating-display">
+            {% for i in range(booking.rating) %}<span class="full">★</span>{% endfor %}
+            {% for i in range(5 - booking.rating) %}<span class="empty">★</span>{% endfor %}
+          </div>
+          {% if booking.ratingComment %}<p style="margin:.6rem 0 0;font-size:.88rem;color:var(--muted);font-style:italic">"{{ booking.ratingComment }}"</p>{% endif %}
+        </div>
+        {% elif booking.status == 'Delivered' %}
+        <!-- Rating form -->
+        <form method="POST" action="{{ '#' }}" id="rating-form">
+          <p style="font-weight:600;font-size:.9rem;margin:0 0 .3rem">How was the service?</p>
+          <div class="star-picker" id="star-picker">
+            {% for i in [5,4,3,2,1] %}
+            <input type="radio" name="stars" id="s{{ i }}" value="{{ i }}" {% if i==5 %}required{% endif %}>
+            <label for="s{{ i }}" title="{{ i }} star{{ 's' if i>1 else '' }}">★</label>
+            {% endfor %}
+          </div>
+          <div id="rating-labels" style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;min-height:1.2rem"></div>
+          <label style="display:block;font-size:.9rem;font-weight:600;margin-bottom:.4rem">Comments (optional)</label>
+          <textarea name="comment" rows="3" style="width:100%;border-radius:12px;border:1px solid var(--line);padding:.7rem .85rem;background:rgba(255,255,255,.9);font:inherit;resize:vertical" placeholder="What went well? Any issues with the driver, timing, or cargo condition?"></textarea>
+          <button type="submit" class="primary-button wide-button" style="margin-top:.8rem">Submit rating</button>
+        </form>
+        {% else %}
+        <p class="muted" style="font-size:.9rem">Rating is available once the delivery is completed (scan-in confirmed).</p>
+        {% endif %}
+      </section>
+
+      <!-- ── REPORT AN EVENT ── -->
+      {% if booking.status in ['Delivered', 'In Transit'] %}
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Report a service event</h2>
+          <p>Report delays or issues — these update the supplier's performance score automatically.</p>
+        </div>
+        <form method="POST" action="{{ '#' }}" id="event-form">
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem" id="event-chips">
+            {% for val, label, icon in [
+              ('delay_1h','Delayed < 1 hour','⏱'),
+              ('delay_3h','Delayed 1–3 hours','⏰'),
+              ('delay_over3h','Delayed > 3 hours','🚨'),
+              ('dc_miss','DC slot missed','📅'),
+              ('damage','Cargo damage','⚠'),
+            ] %}
+            <label style="cursor:pointer">
+              <input type="radio" name="eventType" value="{{ val }}" style="display:none" onchange="selectChip(this)"/>
+              <span class="event-chip" id="chip-{{ val }}">{{ icon }} {{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <button type="submit" class="ghost-button wide-button" id="report-btn" disabled style="opacity:.5;cursor:not-allowed">Report selected event</button>
+        </form>
+
+        {% if booking.ratingEvents %}
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)">
+          <p style="font-size:.82rem;font-weight:600;color:var(--muted);margin:0 0 .6rem;text-transform:uppercase;letter-spacing:.06em">Logged events</p>
+          {% for ev in booking.ratingEvents %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px dashed rgba(56,45,28,.08);font-size:.85rem">
+            <span>{{ ev.label }}</span>
+            <span style="font-weight:600;color:{% if ev.impact < 0 %}#c0392b{% elif ev.impact > 0 %}var(--green){% else %}var(--muted){% endif %}">
+              {% if ev.impact > 0 %}+{% endif %}{{ ev.impact }} pts
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <!-- Waybill QR scan links (no-print copy for quick testing) -->
+      {% if booking.status == 'Confirmed' %}
+      <section class="panel no-print">
+        <div class="panel-head"><h2>QR scan links</h2><p>These are the links encoded in the waybill QR code — for testing.</p></div>
+        <div class="stack" style="gap:.5rem">
+          <a href="{{ '#' }}" class="ghost-button" style="text-align:center">Simulate scan-out (collection)</a>
+          <a href="{{ '#' }}" class="ghost-button" style="text-align:center">Simulate scan-in (delivery)</a>
+        </div>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══════════════ WAYBILL ══════════════ -->
+  {% if booking.waybillGenerated %}
+  <div id="waybill" style="scroll-margin-top:80px">
+    <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+      <h2 style="font-family:'IBM Plex Serif',Georgia,serif;margin:0">Waybill</h2>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="1" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/><rect x="2" y="6" width="12" height="7" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/><rect x="5" y="10" width="6" height="4" rx=".5" stroke="currentColor" stroke-width="1.1" fill="none"/></svg>
+        Print waybill
+      </button>
+    </div>
+    <div class="waybill-wrap">
+      <div class="wb-header">
+        <div class="wb-brand">
+          <div class="wb-brand-mark">FF</div>
+          <div>
+            <div style="font-weight:700;font-size:1rem;letter-spacing:.02em">FreightFlow Nexus</div>
+            <div style="font-size:.72rem;opacity:.7;margin-top:.1rem">Logistics procurement platform</div>
+          </div>
+        </div>
+        <div class="wb-ref-block">
+          <div class="wb-ref-label">Booking reference</div>
+          <div class="wb-ref-number">{{ booking.ref }}</div>
+          <div style="font-size:.7rem;opacity:.65;margin-top:.2rem">{{ booking.createdAt }}</div>
+        </div>
+      </div>
+
+      <div class="wb-body">
+        {% if booking.destinationType == 'Distribution Centre' %}
+        <div class="wb-dc-box">
+          <div class="wb-dc-title">⚠ Distribution Centre Delivery — Appointment Required</div>
+          <div>DC Booking Ref: <strong>{{ booking.dcBookingRef or '—' }}</strong> &nbsp;|&nbsp; Date: <strong>{{ booking.dcSlotDate or '—' }}</strong> &nbsp;|&nbsp; Slot: <strong>{{ booking.dcSlotTime or '—' }}</strong></div>
+          <div style="font-size:.78rem;margin-top:.3rem;color:#7a5800">Driver must arrive within the allocated time slot. Missing the slot requires re-booking.</div>
+        </div>
+        {% endif %}
+
+        <div class="wb-section-title">Collection</div>
+        <div class="wb-addr-grid">
+          <div class="wb-addr-box">
+            <div class="wb-addr-label">Sender — collection address</div>
+            <div class="wb-addr-company">{{ booking.collectionContact }}</div>
+            <div class="wb-addr-line">{{ booking.collectionAddress }}</div>
+            <div class="wb-addr-contact">Contact: {{ booking.collectionContact }} · {{ booking.collectionPhone }}</div>
+          </div>
+          <div class="wb-addr-box">
+            <div class="wb-addr-label">Receiver — delivery address</div>
+            <div class="wb-addr-company">{{ booking.deliveryContact }}</div>
+            <div class="wb-addr-line">{{ booking.deliveryAddress }}</div>
+            <div class="wb-addr-contact">Contact: {{ booking.deliveryContact }} · {{ booking.deliveryPhone }}</div>
+          </div>
+        </div>
+
+        <div class="wb-section-title">Cargo</div>
+        <div class="wb-cargo-grid">
+          <div class="wb-cargo-cell"><div class="wb-cargo-val">{{ booking.pieces }}</div><div class="wb-cargo-key">{{ booking.unitType }}</div></div>
+          <div class="wb-cargo-cell"><div class="wb-cargo-val">{{ booking.weightPerItem }} kg</div><div class="wb-cargo-key">wt / unit</div></div>
+          <div class="wb-cargo-cell"><div class="wb-cargo-val">{{ booking.commodity }}</div><div class="wb-cargo-key">commodity</div></div>
+          <div class="wb-cargo-cell"><div class="wb-cargo-val">{{ booking.supplier }}</div><div class="wb-cargo-key">transporter</div></div>
+        </div>
+
+        <div class="wb-section-title">QR scan events</div>
+        <div class="wb-qr-row">
+          <svg class="wb-qr-svg" width="72" height="72" viewBox="0 0 72 72" fill="none">
+            {% for row in range(7) %}{% for col in range(7) %}
+            {% set cells = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,0,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1]] %}
+            {% if cells[row][col] %}<rect x="{{ col*9+2 }}" y="{{ row*9+2 }}" width="8" height="8" fill="#12253f"/>{% endif %}
+            {% endfor %}{% endfor %}
+            <rect x="29" y="29" width="14" height="14" fill="#12253f" rx="1"/>
+          </svg>
+          <div class="wb-qr-info">
+            <div class="wb-qr-title">Scan to confirm collection &amp; delivery</div>
+            <div class="wb-qr-line"><strong>Scan-out (collection):</strong></div>
+            <div class="wb-qr-url">freightflow.co.za/scan?ref={{ booking.ref }}&amp;event=collect</div>
+            <div class="wb-qr-line" style="margin-top:.4rem"><strong>Scan-in (delivery):</strong></div>
+            <div class="wb-qr-url">freightflow.co.za/scan?ref={{ booking.ref }}&amp;event=deliver</div>
+          </div>
+        </div>
+
+        <div class="wb-sig-row">
+          <div><div class="wb-sig-box">Sender signature &amp; date</div></div>
+          <div><div class="wb-sig-box">Receiver signature &amp; date</div></div>
+        </div>
+      </div>
+
+      <div class="wb-footer">
+        <span>FreightFlow Nexus · freightflow.co.za · support@freightflow.co.za</span>
+        <span>Generated {{ booking.createdAt }}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const labels={5:"Excellent — 5 stars",4:"Good — 4 stars",3:"Average — 3 stars",2:"Poor — 2 stars",1:"Very poor — 1 star"};
+document.querySelectorAll('.star-picker input').forEach(r=>{
+  r.addEventListener('change',()=>{
+    const lbl=document.getElementById('rating-labels');
+    if(lbl) lbl.textContent=labels[r.value]||'';
+  });
+});
+function selectChip(radio){
+  document.querySelectorAll('.event-chip').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('chip-'+radio.value).classList.add('selected');
+  const btn=document.getElementById('report-btn');
+  if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';}
+}
+function copyPublicLink(){
+  const url = window.location.origin + '/track/{{ booking.ref }}';
+  navigator.clipboard.writeText(url).then(()=>{
+    alert('Public tracking link copied!\n\n' + url + '\n\nAnyone with this link can track the shipment without logging in.');
+  });
+}
+</script>
+{% endblock %}

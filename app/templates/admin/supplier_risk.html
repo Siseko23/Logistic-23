@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .risk-row{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:1.2rem 1.4rem;display:flex;align-items:flex-start;gap:1.2rem;flex-wrap:wrap}
+  .risk-row.high-risk{border-left:4px solid #c0392b}
+  .risk-row.medium-risk{border-left:4px solid #e67e22}
+  .risk-row.low-risk{border-left:4px solid #27ae60}
+  .traj-bar{display:flex;align-items:flex-end;gap:2px;height:36px;margin-top:.3rem}
+  .traj-seg{background:var(--accent);border-radius:2px 2px 0 0;width:18px;transition:height .5s ease}
+  .risk-badge-admin{display:inline-block;padding:.25rem .8rem;border-radius:999px;font-weight:700;font-size:.8rem}
+  .badge-high{background:#fadbd8;color:#922b21}
+  .badge-medium{background:#fef9e7;color:#7d6608}
+  .badge-low{background:#d5f5e3;color:#1e8449}
+  .alert-box{background:#fdf2f2;border:1px solid #fadbd8;border-radius:12px;padding:.8rem 1rem;margin-top:.6rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin portal · Intelligence</p>
+      <h1>⚠️ Supplier Risk Monitor</h1>
+      <p class="topbar-copy">AI-powered predictive monitoring of supplier performance decline. Act before it becomes a problem.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('admin.marketplace') }}" class="ghost-button">Supplier insights</a>
+      <a href="{{ url_for('admin.marketplace') }}" class="primary-button">📊 Marketplace</a>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    {% set high = risk_data | selectattr('risk','equalto','High') | list %}
+    {% set med = risk_data | selectattr('risk','equalto','Medium') | list %}
+    {% set low = risk_data | selectattr('risk','equalto','Low') | list %}
+    <div class="stat-card">
+      <p class="stat-label">High risk suppliers</p>
+      <strong style="color:#c0392b">{{ high | length }}</strong>
+      <p class="small-note">Immediate action needed</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Medium risk</p>
+      <strong style="color:#e67e22">{{ med | length }}</strong>
+      <p class="small-note">Monitor closely</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Low risk</p>
+      <strong style="color:#27ae60">{{ low | length }}</strong>
+      <p class="small-note">Performing well</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Platform threshold</p>
+      <strong>3.0</strong>
+      <p class="small-note">Auto-suspend below</p>
+    </div>
+  </div>
+
+  <!-- Supplier risk list -->
+  <div class="stack" style="gap:.9rem">
+    {% for s in risk_data %}
+    {% set score_color = '#27ae60' if s.score >= 4.0 else ('#e67e22' if s.score >= 3.0 else '#c0392b') %}
+    <div class="risk-row {{ s.risk | lower }}-risk">
+      <!-- Score trajectory mini chart -->
+      <div style="flex-shrink:0;text-align:center">
+        <div class="traj-bar">
+          {% for pt in s.trajectory %}
+          {% set h = [[((pt - 2.5) / 2.5 * 34) | int, 4] | max, 36] | min %}
+          <div class="traj-seg" style="height:{{ h }}px;background:{% if pt >= 4.0 %}#27ae60{% elif pt >= 3.0 %}#e67e22{% else %}#c0392b{% endif %}"></div>
+          {% endfor %}
+        </div>
+        <p class="small-note" style="margin:.2rem 0 0;font-size:.7rem">6-week trend</p>
+      </div>
+
+      <!-- Main info -->
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.3rem">
+          <strong style="font-size:1.05rem">{{ s.name }}</strong>
+          <span class="risk-badge-admin badge-{{ s.risk | lower }}">{{ s.risk }} Risk</span>
+          <span style="color:var(--muted);font-size:.85rem">{{ s.baseCity }}</span>
+        </div>
+        <div style="display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.88rem">
+          <span>Score: <strong style="color:{{ score_color }}">{{ s.score }}/5.0</strong></span>
+          <span>6-week change: <strong style="color:{% if s.scoreChange < 0 %}#c0392b{% else %}#27ae60{% endif %}">{% if s.scoreChange >= 0 %}+{% endif %}{{ s.scoreChange }}</strong></span>
+          <span>Acceptance: <strong>{{ s.stats.acceptanceRate }}%</strong></span>
+          <span>Cancellations: <strong>{{ s.cancellationRate }}%</strong></span>
+        </div>
+
+        {% if s.risk == 'High' %}
+        <div class="alert-box">
+          <strong style="color:#c0392b;font-size:.88rem">⚠️ Action required</strong>
+          <p style="color:#922b21;margin:.2rem 0 0;font-size:.85rem">
+            {% if s.score < 3.0 %}Score is below 3.0 — supplier is currently suspended from receiving new bookings.
+            {% else %}Score is declining rapidly. Contact supplier before score hits suspension threshold (3.0).{% endif %}
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Action buttons -->
+      <div style="flex-shrink:0;display:flex;flex-direction:column;gap:.4rem">
+        <a href="{{ url_for('admin.marketplace') }}" class="ghost-button" style="font-size:.82rem;padding:.45rem .9rem;text-align:center">View profile</a>
+        {% if s.risk in ('High','Medium') %}
+        <button onclick="alert('Admin note added for {{ s.name }}')" class="primary-button" style="font-size:.82rem;padding:.45rem .9rem">Add note</button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Risk methodology -->
+  <div class="stat-card" style="padding:1.4rem">
+    <h3 style="margin-bottom:.8rem">Risk classification criteria</h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;font-size:.88rem">
+      <div style="border-left:3px solid #c0392b;padding-left:.8rem">
+        <strong style="color:#c0392b">High Risk</strong>
+        <p class="small-note" style="margin:.3rem 0 0">Score below 3.5, or score dropped more than 0.5 points in 6 weeks. Immediate review required.</p>
+      </div>
+      <div style="border-left:3px solid #e67e22;padding-left:.8rem">
+        <strong style="color:#e67e22">Medium Risk</strong>
+        <p class="small-note" style="margin:.3rem 0 0">Score between 3.5–4.0, or score dropped 0.2–0.5 points. Monitoring recommended.</p>
+      </div>
+      <div style="border-left:3px solid #27ae60;padding-left:.8rem">
+        <strong style="color:#27ae60">Low Risk</strong>
+        <p class="small-note" style="margin:.3rem 0 0">Score above 4.0 with stable or improving trajectory. No action required.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

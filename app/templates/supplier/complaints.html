@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Complaints</h1>
+      <p class="topbar-copy">These complaints have been reviewed by the FreightFlow admin team and forwarded to you for a response. Please respond within 4 hours.</p>
+    </div>
+  </div>
+
+  <div style="background:rgba(126,34,206,.06);border:1px solid rgba(126,34,206,.18);border-radius:18px;padding:1rem 1.2rem;display:flex;gap:.9rem;align-items:flex-start">
+    <span style="font-size:1.4rem">📋</span>
+    <div>
+      <strong>Admin-reviewed complaints</strong>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.88rem">Complaints are only visible to you after FreightFlow admin has reviewed and approved escalation. Respond professionally and provide any supporting documentation.</p>
+    </div>
+  </div>
+
+  <div class="table-like">
+    {% for c in complaints %}
+    <div class="table-row" style="flex-wrap:wrap;gap:.8rem;{% if c.priority=='Critical' %}border-color:rgba(155,28,28,.25);background:rgba(155,28,28,.02){% endif %}">
+      <div style="flex:1;min-width:160px">
+        <strong>{{ c.ref }}</strong>
+        <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ c.category }}</p>
+        {% if c.booking %}<p style="font-size:.8rem;color:var(--accent);margin:.1rem 0 0">Booking: {{ c.booking.ref }}</p>{% endif %}
+      </div>
+      <div style="flex:2;min-width:200px">
+        <p style="margin:0;font-size:.9rem">{{ c.description[:90] }}{% if c.description|length > 90 %}…{% endif %}</p>
+        <p class="muted" style="font-size:.78rem;margin:.3rem 0 0">
+          Forwarded: {{ c.forwarded_at.strftime('%d %b %Y, %H:%M') if c.forwarded_at else '—' }}
+        </p>
+        {% if c.status == 'Forwarded to Supplier' %}
+        <p style="font-size:.78rem;color:#9b1c1c;margin:.1rem 0 0;font-weight:600">⏰ Response required within 4 hours</p>
+        {% endif %}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.45rem">
+        <span style="font-size:.75rem;font-weight:700;padding:.28rem .75rem;border-radius:999px;background:{{ c.status_color }}18;color:{{ c.status_color }}">
+          {{ c.status }}
+        </span>
+        {% if c.priority == 'Critical' %}
+        <span style="font-size:.72rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.2rem .6rem;border-radius:999px">🔴 Critical</span>
+        {% elif c.priority == 'Urgent' %}
+        <span style="font-size:.72rem;background:rgba(122,88,0,.12);color:#7a5800;padding:.2rem .6rem;border-radius:999px">🟡 Urgent</span>
+        {% endif %}
+        <a href="{{ url_for('supplier.complaint_detail', ref=c.ref) }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.82rem">
+          {% if c.status == 'Forwarded to Supplier' %}Respond →{% else %}View →{% endif %}
+        </a>
+      </div>
+    </div>
+    {% else %}
+    <div style="padding:2.5rem;text-align:center">
+      <p style="font-size:1.6rem">✅</p>
+      <p class="muted">No complaints have been forwarded to you.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

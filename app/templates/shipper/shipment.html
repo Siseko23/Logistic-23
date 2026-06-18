@@ -1,0 +1,819 @@
+{% extends "base.html" %}
+{% block extra_head %}
+{% if google_maps_key %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key }}&libraries=places&callback=initMaps" async defer></script>
+{% endif %}
+<style>
+  .map-field-wrap{position:relative}
+  .map-field-wrap input{padding-right:2.4rem}
+  .map-pin-icon{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--accent);pointer-events:none}
+  .map-hint{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+  .calc-live{background:linear-gradient(135deg,rgba(21,95,160,.08),rgba(21,95,160,.04));border:1px solid rgba(21,95,160,.2);border-radius:18px;padding:1rem 1.2rem;margin:1rem 0}
+  .calc-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+  .calc-item{text-align:center}
+  .calc-item .val{font-size:1.35rem;font-weight:600;color:var(--accent-dark);font-family:'IBM Plex Serif',Georgia,serif}
+  .calc-item .lbl{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem}
+  .matching-preview{border-radius:14px;border:1px solid var(--line);background:var(--panel);padding:.8rem 1rem;margin-top:.8rem}
+  .match-row{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.1);font-size:.88rem}
+  .match-row:last-child{border-bottom:none}
+  .match-ok{color:var(--green);font-weight:500}
+  .match-no{color:#c0392b;font-weight:500}
+  .pac-container{z-index:9999!important;font-family:'Space Grotesk',sans-serif!important;border-radius:12px;box-shadow:0 8px 30px rgba(18,37,63,.15)!important}
+  /* Pieces/Pallets toggle */
+  .unit-toggle{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+  .unit-toggle button{flex:1;border:none;background:transparent;padding:.65rem 1rem;font:inherit;font-size:.92rem;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
+  .unit-toggle button.active{background:var(--accent);color:#fff;font-weight:600}
+  /* Address block */
+  .addr-block{border:1px solid var(--line);border-radius:18px;padding:1rem;background:rgba(255,255,255,.42);margin-bottom:.8rem}
+  .addr-block .addr-head{font-weight:600;font-size:.9rem;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem}
+  .addr-badge{font-size:.72rem;padding:.2rem .55rem;border-radius:999px;font-weight:600}
+  .addr-badge.collection{background:rgba(21,95,160,.12);color:var(--accent-dark)}
+  .addr-badge.delivery{background:rgba(47,108,87,.12);color:var(--green)}
+  /* DC fields */
+  .dc-fields{border:1px solid rgba(255,160,0,.35);border-radius:14px;padding:.9rem;background:rgba(255,200,0,.06);margin-top:.6rem}
+  .dc-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:#7a5800;background:rgba(255,200,0,.18);border-radius:999px;padding:.25rem .7rem;margin-bottom:.7rem}
+  /* Pallet info box */
+  .pallet-info{border:1px solid rgba(21,95,160,.2);border-radius:12px;padding:.75rem 1rem;background:rgba(21,95,160,.06);font-size:.84rem;color:var(--accent-dark);margin-bottom:.8rem}
+  .section-label{font-weight:600;margin:.8rem 0 .6rem;font-size:.9rem;display:flex;align-items:center;gap:.5rem}
+  .new-badge{font-size:.68rem;background:var(--accent);color:#fff;padding:.18rem .5rem;border-radius:999px;font-weight:700;letter-spacing:.04em}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>New shipment request</h1>
+      <p class="topbar-copy">Select your cargo unit type, fill in structured addresses and cargo details — the AI engine finds the best supplier automatically.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+
+    <!-- LEFT: form -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Shipment details</h2>
+        <p>All fields used by the AI matching engine. Dimensions per single unit.</p>
+      </div>
+
+      <form id="shipForm" method="POST" action="{{ url_for('shipper.new_booking') }}">
+        <input type="hidden" id="unitTypeInput" name="unitType" value="{{ form.get('unitType','pieces') }}"/>
+        <input type="hidden" id="containerTypeInput" name="containerType" value="{{ form.get('containerType','20ft Standard') }}"/>
+
+        <!-- ── Step 1: Cargo unit type toggle ── -->
+        <p class="section-label">① Cargo unit type <span class="new-badge">NEW v3.0</span></p>
+        <div class="unit-toggle" id="unitToggle">
+          <button type="button" id="btn-pieces" onclick="setUnitType('pieces')">📦 Pieces / Cartons</button>
+          <button type="button" id="btn-pallets" onclick="setUnitType('pallets')">🟫 Pallets (SA Standard)</button>
+          <button type="button" id="btn-container" onclick="setUnitType('container')">🚢 ISO Container</button>
+        </div>
+
+        <div id="pallet-info-box" class="pallet-info" style="display:none">
+          <strong>SA Standard Pallet:</strong> 1 200 mm × 1 000 mm footprint (pre-filled). Enter stack height and weight per pallet.
+          Truck matching uses pallet count directly.
+        </div>
+
+        <div id="container-info-box" class="pallet-info" style="display:none;background:rgba(21,95,160,.06);border-color:rgba(21,95,160,.25)">
+          <strong style="color:#1565a0">🚢 ISO Container booking</strong> — Containers are transported exclusively on
+          <strong>skeletal trailers</strong>. Select your container type below. The truck matching engine will only return
+          skeletal trailer quotes. Container hire from registered shipping agents is quoted separately.
+          <div style="margin-top:.8rem">
+            <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:.4rem">Container type</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.5rem" id="container-type-grid">
+              {% set ctypes = [
+                ('20ft Standard',  '33 CBM · 21,500 kg max · 1 TEU', '⚠ Higher payload than 40ft — SA road law: shorter chassis = more axle load per unit'),
+                ('20ft Reefer',    '28 CBM · 16,000 kg max · 1 TEU · ❄', 'Reefer unit adds ~3,500 kg tare — lower payload ceiling'),
+                ('40ft Standard',  '67 CBM · 22,000 kg max · 2 TEU', 'Weight spread over longer chassis reduces SA road payload vs 20ft'),
+                ('40ft High Cube', '76 CBM · 21,500 kg max · 2 TEU · HC', 'Extra 30 cm height — marginally heavier tare than 40ft Standard'),
+              ] %}
+              {% for ct, desc, sa_note in ctypes %}
+              <label style="display:flex;align-items:flex-start;gap:.5rem;padding:.65rem .85rem;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-size:.82rem;transition:border-color .15s"
+                id="ct-label-{{ loop.index }}" class="ct-label">
+                <input type="radio" name="_containerTypeRadio" value="{{ ct }}" class="ct-radio"
+                  {% if form.get('containerType','20ft Standard') == ct %}checked{% endif %}
+                  onchange="selectContainer('{{ ct }}')"
+                  style="accent-color:#1565a0;margin-top:.15rem;flex-shrink:0">
+                <div>
+                  <strong>{{ ct }}</strong>
+                  <p style="margin:.1rem 0 0;color:var(--muted);font-size:.75rem">{{ desc }}</p>
+                  <p style="margin:.2rem 0 0;color:#1565a0;font-size:.72rem;font-style:italic">{{ sa_note }}</p>
+                </div>
+              </label>
+              {% endfor %}
+
+              <div style="grid-column:1/-1;margin-top:.4rem;padding:.6rem .85rem;background:rgba(21,95,160,.06);border:1px solid rgba(21,95,160,.2);border-radius:10px;font-size:.78rem;color:#1565a0;line-height:1.55">
+                <strong>🇿🇦 Why does 20ft carry more than 40ft on SA roads?</strong><br>
+                Under the National Road Traffic Act (NRTA) and SANS 1518, a 20ft container sits on a shorter skeletal chassis
+                — its weight is concentrated over fewer axles, allowing a higher payload per unit within the legal gross
+                vehicle mass. A 40ft container spreads the same GVM over a longer chassis, reducing the available payload.
+                This is the opposite of what most shippers expect and is unique to SA road legislation.
+              </div>
+            </div>
+          </div>
+          <div style="margin:.8rem 0 0;padding:.75rem 1rem;background:rgba(21,95,160,.08);border:1px solid rgba(21,95,160,.25);border-radius:12px;font-size:.84rem;color:#1565a0;line-height:1.55">
+            <strong>📦 Select number of containers below (1 or 2 maximum)</strong><br>
+            No dimensions or volumetric weight needed — the container itself defines the volume. Just pick your container type above and choose the quantity.
+          </div>
+        </div>
+
+        <!-- ── Step 2: Collection address ── -->
+        <p class="section-label">② Collection address <span class="new-badge">NEW v3.0</span></p>
+        <div class="addr-block">
+          <div class="addr-head"><span class="addr-badge collection">COLLECTION</span> Pickup point</div>
+          <div class="form-grid" style="margin-bottom:.6rem">
+            <label>Company / person name
+              <input name="pickupCompanyName" value="{{ form.get('pickupCompanyName','') }}" placeholder="e.g. Ubuntu Retail Group"/>
+            </label>
+            <label>Unit / floor / bay
+              <input name="pickupUnit" value="{{ form.get('pickupUnit','') }}" placeholder="e.g. Unit 4B, Bay 12"/>
+            </label>
+            <label>Building / complex name
+              <input name="pickupBuilding" value="{{ form.get('pickupBuilding','') }}" placeholder="e.g. Token Industrial Park"/>
+            </label>
+            <label>Street address (Google Maps)
+              <div class="map-field-wrap">
+                <input id="pickup-input" name="collectionAddress" value="{{ form.get('collectionAddress','') }}" placeholder="Start typing…" autocomplete="off"/>
+                <span class="map-pin-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 0 0 3.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 0 0 8 1.5Zm0 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" fill="currentColor"/></svg></span>
+              </div>
+              <input type="hidden" id="pickup-lat" name="pickupLat" value="{{ form.get('pickupLat','') }}"/>
+              <input type="hidden" id="pickup-lng" name="pickupLng" value="{{ form.get('pickupLng','') }}"/>
+              <div class="map-hint" id="pickup-hint">
+                {% if form.get('pickupLat') %}✓ GPS: {{ form.get('pickupLat','') }}, {{ form.get('pickupLng','') }}
+                {% elif not google_maps_key %}ℹ Set GOOGLE_MAPS_API_KEY to enable autocomplete
+                {% else %}Start typing — autocomplete restricted to South Africa{% endif %}
+              </div>
+            </label>
+            <label>City
+              <input name="pickupCity" value="{{ form.get('pickupCity','') }}" list="sa-cities-list" placeholder="e.g. Durban"/>
+            </label>
+            <label>Province
+              <select name="pickupProvince">
+                {% for prov in ['KwaZulu-Natal','Gauteng','Western Cape','Eastern Cape','Limpopo','Mpumalanga','North West','Free State','Northern Cape'] %}
+                <option {% if form.get('pickupProvince')==prov %}selected{% endif %}>{{ prov }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>Postal code
+              <input name="pickupPostal" type="text" maxlength="4" value="{{ form.get('pickupPostal','') }}" placeholder="e.g. 4001"/>
+            </label>
+            <label>Contact person (at collection)
+              <input name="pickupContactName" value="{{ form.get('pickupContactName','') }}" placeholder="Name of collection contact"/>
+            </label>
+            <label>Contact phone (at collection)
+              <input name="pickupContactPhone" type="tel" value="{{ form.get('pickupContactPhone','') }}" placeholder="+27 xx xxx xxxx"/>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Step 3: Delivery address ── -->
+        <p class="section-label">③ Delivery address <span class="new-badge">NEW v3.0</span></p>
+        <div class="addr-block">
+          <div class="addr-head"><span class="addr-badge delivery">DELIVERY</span> Drop-off point</div>
+          <div class="form-grid" style="margin-bottom:.6rem">
+            <label>Company / person name
+              <input name="dropoffCompanyName" value="{{ form.get('dropoffCompanyName','') }}" placeholder="e.g. Massmart DC Johannesburg"/>
+            </label>
+            <label>Unit / floor / bay
+              <input name="dropoffUnit" value="{{ form.get('dropoffUnit','') }}" placeholder="e.g. Receiving Bay 3"/>
+            </label>
+            <label>Building / complex name
+              <input name="dropoffBuilding" value="{{ form.get('dropoffBuilding','') }}" placeholder="e.g. Meadowbrook Logistics Hub"/>
+            </label>
+            <label>Street address (Google Maps)
+              <div class="map-field-wrap">
+                <input id="dropoff-input" name="deliveryAddress" value="{{ form.get('deliveryAddress','') }}" placeholder="Start typing…" autocomplete="off"/>
+                <span class="map-pin-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 0 0 3.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 0 0 8 1.5Zm0 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" fill="currentColor"/></svg></span>
+              </div>
+              <input type="hidden" id="dropoff-lat" name="dropoffLat" value="{{ form.get('dropoffLat','') }}"/>
+              <input type="hidden" id="dropoff-lng" name="dropoffLng" value="{{ form.get('dropoffLng','') }}"/>
+              <div class="map-hint" id="dropoff-hint">
+                {% if form.get('dropoffLat') %}✓ GPS: {{ form.get('dropoffLat','') }}, {{ form.get('dropoffLng','') }}
+                {% elif not google_maps_key %}ℹ Set GOOGLE_MAPS_API_KEY to enable autocomplete
+                {% else %}Start typing — autocomplete restricted to South Africa{% endif %}
+              </div>
+            </label>
+            <label>City
+              <input name="dropoffCity" value="{{ form.get('dropoffCity','') }}" list="sa-cities-list" placeholder="e.g. Johannesburg"/>
+            </label>
+            <label>Province
+              <select name="dropoffProvince">
+                {% for prov in ['Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Limpopo','Mpumalanga','North West','Free State','Northern Cape'] %}
+                <option {% if form.get('dropoffProvince')==prov %}selected{% endif %}>{{ prov }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>Postal code
+              <input name="dropoffPostal" type="text" maxlength="4" value="{{ form.get('dropoffPostal','') }}" placeholder="e.g. 2000"/>
+            </label>
+            <label>Contact person (at delivery)
+              <input name="dropoffContactName" value="{{ form.get('dropoffContactName','') }}" placeholder="Name of delivery contact"/>
+            </label>
+            <label>Contact phone (at delivery)
+              <input name="dropoffContactPhone" type="tel" value="{{ form.get('dropoffContactPhone','') }}" placeholder="+27 xx xxx xxxx"/>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Step 4: Delivery destination type ── -->
+        <p class="section-label">④ Delivery destination type <span class="new-badge">NEW v3.0</span></p>
+        <div style="display:flex;gap:.7rem;margin-bottom:.6rem;flex-wrap:wrap">
+          {% for dtype in ['Door-to-door','Retail store','Distribution Centre'] %}
+          <label style="display:flex;align-items:center;gap:.5rem;border:1px solid var(--line);border-radius:12px;padding:.6rem 1rem;background:rgba(255,255,255,.5);cursor:pointer;font-weight:normal;flex:1;min-width:140px">
+            <input type="radio" name="destinationType" value="{{ dtype }}" onchange="toggleDcFields()"
+                   {% if form.get('destinationType', 'Door-to-door')==dtype %}checked{% endif %}/>
+            {{ '🏠' if dtype=='Door-to-door' else '🏪' if dtype=='Retail store' else '🏭' }}
+            {{ dtype }}
+          </label>
+          {% endfor %}
+        </div>
+
+        <!-- DC additional fields (shown only when Distribution Centre selected) -->
+        <div id="dc-fields" class="dc-fields" style="display:none">
+          <div class="dc-badge">🏭 Distribution Centre — strict appointment required</div>
+          <div class="form-grid">
+            <label>DC booking reference number
+              <input name="dcBookingRef" value="{{ form.get('dcBookingRef','') }}" placeholder="e.g. DC-JHB-20260415-009"/>
+            </label>
+            <label>DC booking date
+              <input name="dcSlotDate" type="date" value="{{ form.get('dcSlotDate','') }}"/>
+            </label>
+            <label>DC booking time slot
+              <select name="dcSlotTime">
+                {% for slot in ['06:00–07:00','07:00–08:00','08:00–09:00','09:00–10:00','10:00–11:00','11:00–12:00','12:00–13:00','13:00–14:00','14:00–15:00','15:00–16:00'] %}
+                <option {% if form.get('dcSlotTime')==slot %}selected{% endif %}>{{ slot }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>DC booking confirmation (PDF)
+              <input type="file" name="dcConfirmDoc" accept=".pdf" style="padding:.55rem"/>
+              <small class="muted">Upload the DC appointment confirmation PDF — stored in secure document vault</small>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Step 5: Cargo dimensions ── -->
+        <p class="section-label" style="margin-top:1rem">⑤ Cargo dimensions</p>
+        <div class="form-grid compact" style="margin-bottom:.8rem" id="cargo-fields">
+          <label id="label-pieces">
+            <span id="pieces-label-text">Number of pieces</span>
+            <input id="f-pieces" name="pieces" type="number" min="1"
+                   value="{{ form.get('pieces','') }}" placeholder="e.g. 20"
+                   oninput="if(currentUnitType==='container' && +this.value>2){this.value=2;} if(+this.value<1 && this.value!==''){this.value=1;} liveCalc()"
+                   onchange="if(currentUnitType==='container' && +this.value>2){this.value=2;}"/>
+          </label>
+          <label id="label-weight">
+            <span id="weight-label-text">Weight per item (kg)</span>
+            <input id="f-weight" name="weightPerItem" type="number" step="0.1"
+                   value="{{ form.get('weightPerItem','') }}" placeholder="e.g. 15" oninput="liveCalc()"/>
+          </label>
+          <label id="label-len">
+            Length (cm)
+            <input id="f-len" name="length" type="number"
+                   value="{{ form.get('length','') }}" placeholder="e.g. 120" oninput="liveCalc()"/>
+          </label>
+          <label id="label-wid">
+            Width (cm)
+            <input id="f-wid" name="width" type="number"
+                   value="{{ form.get('width','') }}" placeholder="e.g. 80" oninput="liveCalc()"/>
+          </label>
+          <label>
+            <span id="height-label-text">Height (cm)</span>
+            <input id="f-hgt" name="height" type="number"
+                   value="{{ form.get('height','') }}" placeholder="e.g. 100" oninput="liveCalc()"/>
+          </label>
+          <label style="position:relative">Collection date &amp; time
+            <input id="collectionDateDisplay" readonly placeholder="Pick date &amp; time"
+              style="cursor:pointer;background:var(--surface)"
+              value="{{ form.get('collectionDate','') | replace('T',' ') if form.get('collectionDate','') else '' }}"
+              onclick="openDatePicker()"/>
+            <input type="hidden" name="collectionDate" id="collectionDateHidden" value="{{ form.get('collectionDate','') }}"/>
+          </label>
+          <div id="dtpicker" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18);padding:1.2rem;min-width:320px;max-width:360px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+              <strong style="font-size:.95rem">Pick collection date &amp; time</strong>
+              <button type="button" onclick="closeDatePicker()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;line-height:1;color:var(--muted)">&#x2715;</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+              <button type="button" onclick="changeMonth(-1)" style="background:none;border:none;font-size:1.1rem;cursor:pointer;padding:.2rem .5rem;border-radius:6px;color:var(--accent)">&#8249;</button>
+              <strong id="dtp-month-label" style="font-size:.9rem"></strong>
+              <button type="button" onclick="changeMonth(1)" style="background:none;border:none;font-size:1.1rem;cursor:pointer;padding:.2rem .5rem;border-radius:6px;color:var(--accent)">&#8250;</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:.25rem">
+              <span style="font-size:.7rem;color:var(--muted);font-weight:600">Su</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">Mo</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">Tu</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">We</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">Th</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">Fr</span><span style="font-size:.7rem;color:var(--muted);font-weight:600">Sa</span>
+            </div>
+            <div id="dtp-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:.8rem"></div>
+            <div style="display:flex;gap:.5rem;align-items:center;justify-content:center;margin-bottom:.9rem">
+              <input id="dtp-hour" type="number" min="0" max="23" style="width:56px;text-align:center;padding:.4rem;border:1px solid var(--line);border-radius:8px;font-size:.95rem" placeholder="HH"/>
+              <span style="font-weight:700;font-size:1.1rem">:</span>
+              <input id="dtp-min" type="number" min="0" max="59" step="15" style="width:56px;text-align:center;padding:.4rem;border:1px solid var(--line);border-radius:8px;font-size:.95rem" placeholder="MM"/>
+            </div>
+            <div id="dtp-selected" style="text-align:center;font-size:.82rem;color:var(--muted);margin-bottom:.7rem;min-height:1.2em"></div>
+            <button type="button" onclick="confirmDateTime()" style="width:100%;padding:.6rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.9rem">Confirm</button>
+          </div>
+          <div id="dtpicker-overlay" onclick="closeDatePicker()" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.3)"></div>
+        </div>
+
+        <!-- Commodity + options -->
+        <p class="section-label">⑥ Commodity &amp; requirements</p>
+        <div class="form-grid" style="margin-bottom:.8rem">
+          <label>Commodity type
+            <select name="commodityType" onchange="liveCalc()">
+              {% for c in ['General freight','Cartons / boxes','Pallets — standard','Pallets — euro','Refrigerated goods','Frozen goods','Perishable food','Hazardous materials','Steel / metal','Machinery / plant','Furniture','Oversized / project cargo','Documents / envelopes'] %}
+              <option {% if form.get('commodityType')==c %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Incoterms / freight terms
+            <select name="incoterms">
+              {% for t in ['EXW (Ex Works)','FCA (Free Carrier)','CPT (Carriage Paid To)','DAP (Delivered At Place)','DDP (Delivered Duty Paid)','Prepaid','COD'] %}
+              <option {% if form.get('incoterms')==t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:1.5rem;align-items:center;margin-bottom:.8rem;font-size:.9rem">
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:normal;border:none;background:none;padding:0">
+            <input type="checkbox" name="sideLoad" {% if form.get('sideLoad') %}checked{% endif %} onchange="liveCalc()"/>
+            Requires side-door / forklift loading
+          </label>
+        </div>
+
+        <label style="display:block;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.42);padding:.9rem;font-weight:600;margin-bottom:.8rem">
+          Special instructions
+          <textarea name="instructions" rows="3" style="width:100%;border-radius:12px;border:1px solid rgba(56,45,28,.16);padding:.75rem .85rem;background:rgba(255,255,255,.93);margin-top:.45rem;font:inherit"
+                    placeholder="Handling notes, access restrictions, fragile items…">{{ form.get('instructions','') }}</textarea>
+        </label>
+
+        <datalist id="sa-cities-list">{% for c in cities %}<option value="{{ c }}">{% endfor %}</datalist>
+
+        <button type="submit" class="primary-button wide-button" style="font-size:1rem;padding:1rem">
+          Calculate &amp; get AI quotes →
+        </button>
+      </form>
+    </section>
+
+    <!-- RIGHT: live calculator -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Live volumetric calculator</h2>
+        <p>Updates as you type. Divisor: <strong>{{ settings.volumetricDivisor }}</strong></p>
+      </div>
+
+      <div class="calc-live">
+        <div class="calc-live-grid">
+          <div class="calc-item"><div class="val" id="m-actual">0 kg</div><div class="lbl">Actual weight</div></div>
+          <div class="calc-item"><div class="val" id="m-vol">0 kg</div><div class="lbl">Volumetric / unit</div></div>
+          <div class="calc-item"><div class="val" id="m-charge">0 kg</div><div class="lbl">Chargeable / unit</div></div>
+          <div class="calc-item"><div class="val" id="m-total">0 kg</div><div class="lbl">Total chargeable</div></div>
+          <div class="calc-item"><div class="val" id="m-cbm">0 m³</div><div class="lbl">Total CBM</div></div>
+          <div class="calc-item"><div class="val" id="m-pallets">~0</div><div class="lbl" id="pallet-lbl">Est. pallets</div></div>
+        </div>
+      </div>
+
+      <!-- ISO Container summary panel (shown only when container mode active) -->
+      <div id="container-summary-panel" style="display:none;margin:.8rem 0;padding:1rem 1.1rem;background:rgba(21,95,160,.06);border:1.5px solid rgba(21,95,160,.25);border-radius:16px">
+        <p style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--accent-dark);text-transform:uppercase;margin:0 0 .65rem">🚢 Container booking summary</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem;font-size:.88rem">
+          <div><span style="color:var(--muted)">Type &amp; quantity</span><br><strong id="cs-type">1× 20ft Standard</strong></div>
+          <div><span style="color:var(--muted)">Total volume</span><br><strong id="cs-cbm">33 m³</strong></div>
+          <div><span style="color:var(--muted)">TEU</span><br><strong id="cs-teu">1 TEU</strong></div>
+          <div><span style="color:var(--muted)">Max payload</span><br><strong id="cs-maxkg">21,500 kg max payload</strong></div>
+        </div>
+        <div style="margin-top:.7rem;padding:.55rem .8rem;background:rgba(255,255,255,.6);border-radius:10px;font-size:.82rem;color:var(--accent-dark)">
+          🚛 <strong id="cs-truck">1 skeletal trailer required</strong> — no volumetric calculation applied
+        </div>
+      </div>
+
+      <div class="panel-head" style="margin-top:1.2rem">
+        <h2>Truck compatibility preview</h2>
+        <p>Green trucks will appear on the quotes page.</p>
+      </div>
+      <div class="matching-preview">
+        <div id="truck-preview"><p class="muted" style="font-size:.88rem">Enter cargo dimensions above to see which trucks qualify.</p></div>
+      </div>
+
+      <!-- SA truck specs table -->
+      <div class="panel-head" style="margin-top:1.4rem">
+        <h2>SA truck specifications</h2>
+        <p>Key limits used by the matching engine.</p>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid var(--line)">
+              <th style="text-align:left;padding:.5rem .4rem;color:var(--muted);font-weight:600">Vehicle</th>
+              <th style="text-align:right;padding:.5rem .4rem;color:var(--muted);font-weight:600">Max kg</th>
+              <th style="text-align:right;padding:.5rem .4rem;color:var(--muted);font-weight:600">Max CBM</th>
+              <th style="text-align:right;padding:.5rem .4rem;color:var(--muted);font-weight:600">Max H (cm)</th>
+              <th style="text-align:right;padding:.5rem .4rem;color:var(--muted);font-weight:600">Pallets</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set trucks = [('Bakkie / LDV',1000,3,130,2),('1-Ton Van',1000,6,160,3),('3-Ton Truck',3000,18,200,6),('4-Ton Truck',4000,28,220,10),('8-Ton Rigid',8000,45,240,16),('Curtainsider',8000,48,240,18),('Flat-Deck',15000,60,9999,24),('Horse & Trailer',22000,80,260,30),('Superlink',34000,120,270,45),('Reefer',8000,44,230,16)] %}
+            {% for name,kg,cbm,h,pal in trucks %}
+            <tr style="border-bottom:1px solid var(--line)">
+              <td style="padding:.45rem .4rem">{{ name }}</td>
+              <td style="padding:.45rem .4rem;text-align:right">{{ "{:,}".format(kg) }}</td>
+              <td style="padding:.45rem .4rem;text-align:right">{{ cbm }}</td>
+              <td style="padding:.45rem .4rem;text-align:right">{% if h > 999 %}∞{% else %}{{ h }}{% endif %}</td>
+              <td style="padding:.45rem .4rem;text-align:right">{{ pal }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SA Pallet spec info -->
+      <div style="margin-top:1rem;padding:.8rem 1rem;border-radius:14px;border:1px solid rgba(21,95,160,.2);background:rgba(21,95,160,.05);font-size:.84rem">
+        <strong>SA Standard Pallet (SABS)</strong><br>
+        Footprint: 1 200 mm × 1 000 mm &nbsp;|&nbsp; Standard stacked height: 1 200 mm &nbsp;|&nbsp; Max load: 1 000–1 500 kg
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DIV = {{ settings.volumetricDivisor }};
+let currentUnitType = '{{ form.get("unitType","pieces") }}';
+
+const TRUCKS = [
+  {name:"Bakkie / LDV",       maxWeight:1000,  maxCBM:3,   maxHeight:130,  maxPallets:2,  sideDoor:true},
+  {name:"1-Ton Van",           maxWeight:1000,  maxCBM:6,   maxHeight:160,  maxPallets:3,  sideDoor:true},
+  {name:"3-Ton Truck",         maxWeight:3000,  maxCBM:18,  maxHeight:200,  maxPallets:6,  sideDoor:false},
+  {name:"4-Ton Truck",         maxWeight:4000,  maxCBM:28,  maxHeight:220,  maxPallets:10, sideDoor:false},
+  {name:"8-Ton Rigid",         maxWeight:8000,  maxCBM:45,  maxHeight:240,  maxPallets:16, sideDoor:false},
+  {name:"Curtainsider (8-Ton)",maxWeight:8000,  maxCBM:48,  maxHeight:240,  maxPallets:18, sideDoor:true},
+  {name:"Flat-Deck / Lowbed",  maxWeight:15000, maxCBM:60,  maxHeight:9999, maxPallets:24, sideDoor:false},
+  {name:"Horse & Trailer",     maxWeight:22000, maxCBM:80,  maxHeight:260,  maxPallets:30, sideDoor:false},
+  {name:"Superlink (34-Ton)",  maxWeight:34000, maxCBM:120, maxHeight:270,  maxPallets:45, sideDoor:false},
+  {name:"Reefer Truck",        maxWeight:8000,  maxCBM:44,  maxHeight:230,  maxPallets:16, sideDoor:false, reefer:true},
+];
+
+// Container specs for JS live calc
+// SA road payload limits (NRTA / SANS 1518)
+const CONTAINER_SPECS = {
+  '20ft Standard':  {cbm:33, maxKg:21500, len:590,  wid:235, hgt:239, teu:1},
+  '20ft Reefer':    {cbm:28, maxKg:16000, len:545,  wid:225, hgt:200, teu:1},
+  '40ft Standard':  {cbm:67, maxKg:22000, len:1200, wid:235, hgt:239, teu:2},
+  '40ft High Cube': {cbm:76, maxKg:21500, len:1200, wid:235, hgt:269, teu:2},
+};
+let currentContainerType = document.getElementById('containerTypeInput')?.value || '20ft Standard';
+
+function selectContainer(type) {
+  currentContainerType = type;
+  document.getElementById('containerTypeInput').value = type;
+  document.querySelectorAll('.ct-label').forEach(l => {
+    l.style.borderColor = l.querySelector('input').value === type ? '#1565a0' : 'var(--line)';
+    l.style.background  = l.querySelector('input').value === type ? 'rgba(21,95,160,.07)' : '';
+  });
+  // Update hidden dimension fields immediately on container type change
+  const spec = CONTAINER_SPECS[type] || CONTAINER_SPECS['20ft Standard'];
+  document.getElementById('f-len').value = spec.len;
+  document.getElementById('f-wid').value = spec.wid;
+  document.getElementById('f-hgt').value = spec.hgt;
+  liveCalc();
+}
+
+function setUnitType(type) {
+  currentUnitType = type;
+  document.getElementById('unitTypeInput').value = type;
+
+  document.getElementById('btn-pieces').classList.toggle('active', type === 'pieces');
+  document.getElementById('btn-pallets').classList.toggle('active', type === 'pallets');
+  document.getElementById('btn-container').classList.toggle('active', type === 'container');
+  document.getElementById('pallet-info-box').style.display    = type === 'pallets'   ? 'block' : 'none';
+  document.getElementById('container-info-box').style.display = type === 'container' ? 'block' : 'none';
+
+  // Show/hide dimension fields — containers don't need them
+  const dimFields = document.getElementById('label-pieces').closest('.form-grid');
+  const lenRow = document.getElementById('label-len');
+  const widRow = document.getElementById('label-wid');
+
+  if (type === 'container') {
+    // ── ISO Container mode: only qty (1 or 2), hide all weight & dimension fields ──
+    document.getElementById('pieces-label-text').textContent = 'Number of ISO containers (max 2)';
+    document.getElementById('pallet-lbl').textContent = 'TEU';
+
+    // Restrict quantity field: min 1, max 2, integer only
+    const piecesEl = document.getElementById('f-pieces');
+    piecesEl.min = 1; piecesEl.max = 2; piecesEl.step = 1;
+    piecesEl.placeholder = '1 or 2';
+    if (+piecesEl.value > 2) piecesEl.value = 2;
+    if (+piecesEl.value < 1 || !piecesEl.value) piecesEl.value = 1;
+
+    // Hide weight and all dimension fields — not relevant for containers
+    document.getElementById('label-weight').style.display = 'none';
+    document.getElementById('label-len').style.display = 'none';
+    document.getElementById('label-wid').style.display = 'none';
+    document.getElementById('label-hgt') && (document.getElementById('label-hgt').style.display = 'none');
+    // Find and hide the height label (it doesn't have an id on the label, only on the input)
+    const hgtLabel = document.getElementById('f-hgt')?.closest('label');
+    if (hgtLabel) hgtLabel.style.display = 'none';
+
+    // Store container spec dimensions as hidden values for form submission
+    const spec = CONTAINER_SPECS[currentContainerType] || CONTAINER_SPECS['20ft Standard'];
+    const lenEl = document.getElementById('f-len');
+    const widEl = document.getElementById('f-wid');
+    const hgtEl = document.getElementById('f-hgt');
+    const wEl   = document.getElementById('f-weight');
+    lenEl.value = spec.len; lenEl.readOnly = true;
+    widEl.value = spec.wid; widEl.readOnly = true;
+    hgtEl.value = spec.hgt; hgtEl.readOnly = true;
+    wEl.value   = ''; wEl.readOnly = false; // clear weight, not required
+
+    // Hide the volumetric calc panel — not relevant for containers
+    const calcPanel = document.getElementById('m-actual')?.closest('.calc-live');
+    if (calcPanel) calcPanel.style.display = 'none';
+    document.getElementById('container-calc-panel') && (document.getElementById('container-calc-panel').style.display = 'block');
+
+  } else if (type === 'pallets') {
+    document.getElementById('pieces-label-text').textContent = 'Number of pallets';
+    document.getElementById('weight-label-text').textContent = 'Weight per pallet (kg)';
+    document.getElementById('height-label-text') && (document.getElementById('height-label-text').textContent = 'Stack height per pallet (cm)');
+    document.getElementById('pallet-lbl').textContent = 'Pallets (entered)';
+
+    // Restore quantity field limits (pallets has no max)
+    const piecesEl = document.getElementById('f-pieces');
+    piecesEl.removeAttribute('max'); piecesEl.min = 1; piecesEl.placeholder = 'e.g. 10';
+
+    // Ensure weight and dim fields are visible
+    document.getElementById('label-weight').style.display = '';
+    document.getElementById('label-len').style.display = '';
+    document.getElementById('label-wid').style.display = '';
+    const hgtLabel = document.getElementById('f-hgt')?.closest('label');
+    if (hgtLabel) hgtLabel.style.display = '';
+    const calcPanel = document.getElementById('m-actual')?.closest('.calc-live');
+    if (calcPanel) calcPanel.style.display = '';
+
+    const lenEl = document.getElementById('f-len');
+    const widEl = document.getElementById('f-wid');
+    const hgtEl = document.getElementById('f-hgt');
+    lenEl.value = 120; lenEl.readOnly = true; lenEl.style.background = 'rgba(21,95,160,.07)';
+    widEl.value = 100; widEl.readOnly = true; widEl.style.background = 'rgba(21,95,160,.07)';
+    hgtEl.readOnly = false; hgtEl.style.background = '';
+    lenEl.title = 'SA Standard Pallet: 1200mm length (pre-filled)';
+    widEl.title = 'SA Standard Pallet: 1000mm width (pre-filled)';
+  } else {
+    document.getElementById('pieces-label-text').textContent = 'Number of pieces';
+    document.getElementById('weight-label-text').textContent = 'Weight per item (kg)';
+    document.getElementById('height-label-text') && (document.getElementById('height-label-text').textContent = 'Height (cm)');
+    document.getElementById('pallet-lbl').textContent = 'Est. pallets';
+
+    // Restore quantity field limits
+    const piecesEl = document.getElementById('f-pieces');
+    piecesEl.removeAttribute('max'); piecesEl.min = 1; piecesEl.placeholder = 'e.g. 20';
+
+    // Restore weight and dimension visibility
+    document.getElementById('label-weight').style.display = '';
+    document.getElementById('label-len').style.display = '';
+    document.getElementById('label-wid').style.display = '';
+    const hgtLabel = document.getElementById('f-hgt')?.closest('label');
+    if (hgtLabel) hgtLabel.style.display = '';
+
+    // Restore volumetric calc panel
+    const calcPanel = document.getElementById('m-actual')?.closest('.calc-live');
+    if (calcPanel) calcPanel.style.display = '';
+
+    ['f-len','f-wid','f-hgt','f-weight'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.readOnly = false; el.style.background = ''; el.title = ''; }
+    });
+  }
+  liveCalc();
+}
+
+function toggleDcFields() {
+  const val = document.querySelector('[name="destinationType"]:checked')?.value;
+  document.getElementById('dc-fields').style.display = val === 'Distribution Centre' ? 'block' : 'none';
+}
+
+function liveCalc() {
+  let p  = +document.getElementById('f-pieces').value || 0;
+  let w  = +document.getElementById('f-weight').value || 0;
+  let h  = +document.getElementById('f-hgt').value    || 0;
+  let l, wd, cbm, pallets;
+
+  if (currentUnitType === 'container') {
+    // ── Enforce max 2 containers in real-time ──
+    const piecesEl = document.getElementById('f-pieces');
+    let qty = Math.max(1, Math.min(2, Math.round(+piecesEl.value || 1)));
+    if (+piecesEl.value > 2) { piecesEl.value = 2; qty = 2; }
+    if (+piecesEl.value < 1 || !piecesEl.value) { piecesEl.value = 1; qty = 1; }
+
+    const spec = CONTAINER_SPECS[currentContainerType] || CONTAINER_SPECS['20ft Standard'];
+    const teu = spec.teu * qty;
+    const totalCBM = spec.cbm * qty;
+
+    // Update container summary panel
+    const panel = document.getElementById('container-summary-panel');
+    if (panel) {
+      document.getElementById('cs-type').textContent   = qty + '× ' + currentContainerType;
+      document.getElementById('cs-cbm').textContent    = totalCBM + ' m³';
+      document.getElementById('cs-teu').textContent    = teu + ' TEU';
+      document.getElementById('cs-maxkg').textContent  = (spec.maxKg * qty).toLocaleString() + ' kg max payload';
+      document.getElementById('cs-truck').textContent  = qty === 1 ? '1 skeletal trailer required' : '2 skeletal trailers required';
+      panel.style.display = 'block';
+    }
+
+    // Keep hidden form fields in sync
+    document.getElementById('f-len').value = spec.len;
+    document.getElementById('f-wid').value = spec.wid;
+    document.getElementById('f-hgt').value = spec.hgt;
+    document.getElementById('m-pallets').textContent = teu + ' TEU';
+    return; // skip volumetric truck-matching preview for containers
+  } else if (currentUnitType === 'pallets') {
+    l = 120; wd = 100;
+    const volUnit = (l * wd * h) / DIV;
+    const chargeUnit = Math.max(w, volUnit);
+    cbm = (l * wd * h * p) / 1e6;
+    pallets = p;
+    document.getElementById('m-actual').textContent  = (p * w).toFixed(0) + ' kg';
+    document.getElementById('m-vol').textContent     = volUnit.toFixed(1) + ' kg';
+    document.getElementById('m-charge').textContent  = chargeUnit.toFixed(1) + ' kg';
+    document.getElementById('m-total').textContent   = (chargeUnit * p).toFixed(1) + ' kg';
+    document.getElementById('m-cbm').textContent     = cbm.toFixed(3) + ' m³';
+    document.getElementById('m-pallets').textContent = pallets + ' pallets';
+  } else {
+    l  = +document.getElementById('f-len').value || 0;
+    wd = +document.getElementById('f-wid').value || 0;
+    const volUnit = (l * wd * h) / DIV;
+    const chargeUnit = Math.max(w, volUnit);
+    cbm = (l * wd * h * p) / 1e6;
+    pallets = cbm > 0 ? Math.max(1, Math.round(cbm / 1.2)) : p;
+    document.getElementById('m-actual').textContent  = (p * w).toFixed(0) + ' kg';
+    document.getElementById('m-vol').textContent     = volUnit.toFixed(1) + ' kg';
+    document.getElementById('m-charge').textContent  = chargeUnit.toFixed(1) + ' kg';
+    document.getElementById('m-total').textContent   = (chargeUnit * p).toFixed(1) + ' kg';
+    document.getElementById('m-cbm').textContent     = cbm.toFixed(3) + ' m³';
+    document.getElementById('m-pallets').textContent = '~' + pallets;
+  }
+
+  const chargeTotal = (currentUnitType === 'pallets')
+    ? Math.max(w, (120*100*h)/DIV) * p
+    : Math.max(w, (l*wd*h)/DIV) * p;
+
+  const sideLoad   = document.querySelector('[name="sideLoad"]').checked;
+  const commodity  = document.querySelector('[name="commodityType"]').value.toLowerCase();
+  const needsReefer= ['refrigerat','perishab','frozen'].some(k => commodity.includes(k));
+  let html = '';
+
+  TRUCKS.forEach(t => {
+    const reasons = [];
+    if (chargeTotal > t.maxWeight) reasons.push('Too heavy');
+    if (cbm > t.maxCBM)           reasons.push('Too large (CBM)');
+    if (h > t.maxHeight)          reasons.push(`Height ${h} cm > ${t.maxHeight} cm`);
+    if (pallets > t.maxPallets)   reasons.push('Too many pallets');
+    if (sideLoad && !t.sideDoor)  reasons.push('No side door');
+    if (needsReefer && !t.reefer) reasons.push('No refrigeration');
+    const ok = reasons.length === 0 && (p > 0 || w > 0);
+    if (p > 0 || w > 0) {
+      html += `<div class="match-row"><span>${t.name}</span><span class="${ok?'match-ok':'match-no'}">${ok?'✓ Eligible':'✗ '+reasons[0]}</span></div>`;
+    }
+  });
+
+  document.getElementById('truck-preview').innerHTML = html ||
+    '<p class="muted" style="font-size:.88rem">Enter cargo dimensions above to see which trucks qualify.</p>';
+}
+
+// Initialise on load
+document.addEventListener('DOMContentLoaded', () => {
+  setUnitType(currentUnitType);
+  toggleDcFields();
+  liveCalc();
+});
+
+// Google Maps autocomplete
+function initMaps() {
+  const opts = {componentRestrictions:{country:'za'},types:['geocode','establishment'],fields:['formatted_address','geometry']};
+  function setup(inputId, latId, lngId, hintId, cityName, provinceName) {
+    const input = document.getElementById(inputId);
+    const ac = new google.maps.places.Autocomplete(input, opts);
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (place.geometry) {
+        document.getElementById(latId).value = place.geometry.location.lat().toFixed(6);
+        document.getElementById(lngId).value = place.geometry.location.lng().toFixed(6);
+        document.getElementById(hintId).innerHTML =
+          `<span style="color:var(--green)">✓ GPS: ${place.geometry.location.lat().toFixed(4)}, ${place.geometry.location.lng().toFixed(4)}</span>`;
+        input.value = place.formatted_address;
+        // Auto-fill city from address components
+        if (place.address_components) {
+          const cityComp = place.address_components.find(c => c.types.includes('locality'));
+          if (cityComp) { const el = document.querySelector(`[name="${cityName}"]`); if(el) el.value = cityComp.long_name; }
+        }
+      }
+    });
+    input.addEventListener('keydown', e => { if (e.key==='Enter') e.preventDefault(); });
+  }
+  setup('pickup-input',  'pickup-lat',  'pickup-lng',  'pickup-hint',  'pickupCity',  'pickupProvince');
+  setup('dropoff-input', 'dropoff-lat', 'dropoff-lng', 'dropoff-hint', 'dropoffCity', 'dropoffProvince');
+}
+
+if (typeof google === 'undefined') {
+  ['pickup-input','dropoff-input'].forEach(id => {
+    const el = document.getElementById(id);
+    const dl = document.createElement('datalist');
+    dl.id = id+'-list';
+    {{ cities|tojson }}.forEach(c => { const o=document.createElement('option');o.value=c;dl.appendChild(o); });
+    document.body.appendChild(dl);
+    el.setAttribute('list', dl.id);
+  });
+}
+
+// ── Calendar date/time picker ──────────────────────────────────────────────
+let dtpYear, dtpMonth, dtpDay = null;
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function openDatePicker() {
+  const now = new Date();
+  const existing = document.getElementById('collectionDateHidden').value;
+  if (existing) {
+    const d = new Date(existing);
+    dtpYear = d.getFullYear(); dtpMonth = d.getMonth(); dtpDay = d.getDate();
+    document.getElementById('dtp-hour').value = String(d.getHours()).padStart(2,'0');
+    document.getElementById('dtp-min').value = String(d.getMinutes()).padStart(2,'0');
+  } else {
+    dtpYear = now.getFullYear(); dtpMonth = now.getMonth(); dtpDay = null;
+    document.getElementById('dtp-hour').value = '08';
+    document.getElementById('dtp-min').value = '00';
+  }
+  renderCalendar();
+  document.getElementById('dtpicker').style.display = 'block';
+  document.getElementById('dtpicker-overlay').style.display = 'block';
+}
+
+function closeDatePicker() {
+  document.getElementById('dtpicker').style.display = 'none';
+  document.getElementById('dtpicker-overlay').style.display = 'none';
+}
+
+function changeMonth(delta) {
+  dtpMonth += delta;
+  if (dtpMonth > 11) { dtpMonth = 0; dtpYear++; }
+  if (dtpMonth < 0)  { dtpMonth = 11; dtpYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('dtp-month-label').textContent = MONTHS[dtpMonth] + ' ' + dtpYear;
+  const grid = document.getElementById('dtp-days');
+  grid.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDay = new Date(dtpYear, dtpMonth, 1).getDay();
+  const daysInMonth = new Date(dtpYear, dtpMonth+1, 0).getDate();
+  for (let i = 0; i < firstDay; i++) {
+    grid.insertAdjacentHTML('beforeend','<span></span>');
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(dtpYear, dtpMonth, d);
+    const isPast = date < today;
+    const isSelected = d === dtpDay;
+    const isToday = date.getTime() === today.getTime();
+    grid.insertAdjacentHTML('beforeend',
+      `<button type="button" onclick="selectDay(${d})" ${isPast ? 'disabled' : ''}
+        style="padding:.35rem 0;border:none;border-radius:8px;font-size:.82rem;cursor:${isPast?'default':'pointer'};
+        background:${isSelected?'var(--accent)':isToday?'rgba(47,108,87,.12)':'transparent'};
+        color:${isSelected?'#fff':isPast?'#ccc':'inherit'};font-weight:${isToday||isSelected?'700':'400'}">${d}</button>`
+    );
+  }
+  updateSelectedLabel();
+}
+
+function selectDay(d) {
+  dtpDay = d;
+  renderCalendar();
+}
+
+function updateSelectedLabel() {
+  const lbl = document.getElementById('dtp-selected');
+  if (!dtpDay) { lbl.textContent = 'Select a date above'; return; }
+  const h = document.getElementById('dtp-hour').value || '00';
+  const m = document.getElementById('dtp-min').value || '00';
+  const dateStr = new Date(dtpYear, dtpMonth, dtpDay).toLocaleDateString('en-ZA',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  lbl.textContent = dateStr + '  ·  ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+document.getElementById('dtp-hour').addEventListener('input', updateSelectedLabel);
+document.getElementById('dtp-min').addEventListener('input', updateSelectedLabel);
+
+function confirmDateTime() {
+  if (!dtpDay) { alert('Please select a date.'); return; }
+  let h = parseInt(document.getElementById('dtp-hour').value) || 8;
+  let m = parseInt(document.getElementById('dtp-min').value) || 0;
+  h = Math.min(23, Math.max(0, h));
+  m = Math.min(59, Math.max(0, Math.round(m/15)*15));
+  const pad = n => String(n).padStart(2,'0');
+  const isoVal = `${dtpYear}-${pad(dtpMonth+1)}-${pad(dtpDay)}T${pad(h)}:${pad(m)}`;
+  const displayVal = `${pad(dtpDay)} ${MONTHS[dtpMonth].slice(0,3)} ${dtpYear}  ${pad(h)}:${pad(m)}`;
+  document.getElementById('collectionDateHidden').value = isoVal;
+  document.getElementById('collectionDateDisplay').value = displayVal;
+  closeDatePicker();
+}
+</script>
+{% endblock %}

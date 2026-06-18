@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Driver portal</p><h1>My profile</h1></div></div>
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Personal details</h2></div>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+        <div style="width:56px;height:56px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:600;color:#0C447C;flex-shrink:0">
+          {{ driver.name.split()[0][0] }}{{ driver.name.split()[-1][0] }}
+        </div>
+        <div>
+          <strong style="font-size:1.05rem">{{ driver.name }}</strong>
+          <p class="muted" style="margin:.2rem 0 0;font-size:.88rem">{{ driver.supplierName }}</p>
+          <span style="font-size:.75rem;font-weight:600;padding:.2rem .7rem;border-radius:999px;background:{% if driver.status=='Active' %}rgba(47,108,87,.12){% else %}rgba(255,200,0,.18){% endif %};color:{% if driver.status=='Active' %}var(--green){% else %}#7a5800{% endif %}">{{ driver.status }}</span>
+        </div>
+      </div>
+      <div style="font-size:.9rem">
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">ID number</span><strong>{{ driver.idNumber }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">Phone</span><strong>{{ driver.phone }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">Email</span><strong>{{ driver.email }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">Driver rating</span><strong>{{ driver.rating }} / 5.0</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0"><span class="muted">On-time rate</span><strong>{{ driver.onTimeRate }}%</strong></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>License &amp; vehicle</h2></div>
+      {% if driver.status == 'License Expiring' %}
+      <div style="background:rgba(255,200,0,.14);border:1px solid #e8a000;border-radius:12px;padding:.8rem 1rem;margin-bottom:.8rem">
+        <strong style="color:#7a5800">⚠ License expiring soon</strong>
+        <p style="color:#7a5800;font-size:.85rem;margin:.3rem 0 0">Your license expires on {{ driver.licenseExpiry }}. Please renew before this date.</p>
+      </div>
+      {% endif %}
+      <div style="font-size:.9rem">
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">License number</span><strong>{{ driver.licenseNo }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">License type</span><strong>{{ driver.licenseType }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">License expiry</span><strong style="color:{% if driver.status=='License Expiring' %}#c0392b{% else %}var(--text){% endif %}">{{ driver.licenseExpiry }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">Vehicle registration</span><strong>{{ driver.vehicleReg }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px dashed rgba(56,45,28,.08)"><span class="muted">Vehicle type</span><strong>{{ driver.vehicleType }}</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:.45rem 0"><span class="muted">Company</span><strong>{{ driver.supplierName }}</strong></div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

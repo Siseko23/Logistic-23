@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+#tracking-map{width:100%;height:420px;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#c7d2fe 0%,#a5f3fc 100%);position:relative;display:flex;align-items:center;justify-content:center}
+.map-placeholder{text-align:center;pointer-events:none}
+.truck-marker{font-size:2rem;animation:move 1s ease-in-out infinite alternate}
+@keyframes move{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
+.live-badge{display:inline-flex;align-items:center;gap:.4rem;background:#16a34a;color:#fff;border-radius:999px;padding:.3rem .8rem;font-size:.78rem;font-weight:700}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.stat-pill{background:rgba(255,255,255,.85);border-radius:12px;padding:.4rem .8rem;font-size:.8rem;font-weight:600;color:var(--navy)}
+.timeline-step{display:flex;align-items:flex-start;gap:.8rem;padding:.6rem 0}
+.step-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;margin-top:.15rem;border:2px solid var(--line);background:#fff}
+.step-dot.done{background:var(--accent);border-color:var(--accent)}
+.step-dot.active{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px rgba(21,95,160,.2)}
+.step-line{width:2px;background:var(--line);height:24px;margin-left:7px}
+.step-line.done{background:var(--accent)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>Live tracking — {{ booking.ref }}</h1>
+      <p class="topbar-copy">{{ booking.route }} · {{ booking.supplier }}</p>
+    </div>
+    <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+  </div>
+
+  <div class="grid two-up">
+    <div class="stack">
+      <!-- Live map -->
+      <div id="tracking-map">
+        <div class="map-placeholder">
+          <div class="truck-marker">🚛</div>
+          <p style="font-weight:700;color:var(--navy);margin:.4rem 0 .2rem" id="map-label">Driver en route</p>
+          <p style="font-size:.82rem;color:var(--muted)" id="map-coords">Waiting for location…</p>
+          <div style="margin-top:.6rem;display:flex;gap:.5rem;justify-content:center">
+            <span class="stat-pill" id="speed-pill">Speed: — km/h</span>
+            <span class="stat-pill" id="eta-pill">ETA: calculating…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location log -->
+      <section class="panel">
+        <div class="panel-head"><h2>Location feed</h2><p>GPS updates every 3 seconds from the driver's app</p></div>
+        <div id="location-log" style="font-family:monospace;font-size:.78rem;color:var(--muted);height:140px;overflow-y:auto;background:#f8fafc;border-radius:12px;padding:.6rem .8rem;line-height:1.7"></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <!-- Status timeline -->
+      <section class="panel">
+        <div class="panel-head"><h2>Delivery timeline</h2></div>
+        {% set steps = [
+          ('Booking confirmed', booking.createdAt, booking.status in ['Confirmed','In Transit','Delivered'], False),
+          ('Cargo collected (QR scan)', booking.collectedAt, booking.status in ['In Transit','Delivered'], booking.status == 'In Transit'),
+          ('In transit', booking.collectedAt, booking.status in ['In Transit','Delivered'], False),
+          ('Delivered (QR scan)', booking.deliveredAt, booking.status == 'Delivered', False),
+        ] %}
+        {% for label, ts, done, active in steps %}
+        <div class="timeline-step">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div class="step-dot {% if done %}done{% elif active %}active{% endif %}"></div>
+            {% if not loop.last %}<div class="step-line {% if done %}done{% endif %}"></div>{% endif %}
+          </div>
+          <div style="padding-bottom:.4rem">
+            <strong style="font-size:.88rem;{% if active %}color:var(--accent){% endif %}">{{ label }}</strong>
+            {% if ts %}<p class="muted" style="font-size:.78rem;margin:.1rem 0 0">{{ ts }}</p>{% endif %}
+            {% if active %}<p style="font-size:.75rem;color:var(--accent);margin:.1rem 0 0">● Currently here</p>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </section>
+
+      <!-- Driver card -->
+      <section class="panel">
+        <div class="panel-head"><h2>Driver</h2></div>
+        <div style="display:flex;align-items:center;gap:.9rem">
+          <div style="width:44px;height:44px;border-radius:50%;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:1rem;flex-shrink:0">
+            {{ booking.driverName.split()[0][0] }}{{ booking.driverName.split()[-1][0] }}
+          </div>
+          <div>
+            <strong>{{ booking.driverName }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.1rem 0 0">{{ booking.vehicleReg }}</p>
+          </div>
+        </div>
+        <div style="margin-top:.8rem;padding:.7rem;background:rgba(155,28,28,.05);border-radius:12px;border:1px solid rgba(155,28,28,.1)">
+          <p style="margin:0;font-size:.82rem;color:#9b1c1c">🔒 Driver contact details are not shared directly. Use the Reports section to raise any issues.</p>
+        </div>
+      </section>
+
+      <!-- Booking summary -->
+      <section class="panel">
+        <div class="panel-head"><h2>Booking summary</h2></div>
+        <div class="stack" style="gap:.4rem">
+          <div class="summary-row"><span>Reference</span><strong>{{ booking.ref }}</strong></div>
+          <div class="summary-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+          <div class="summary-row"><span>Cargo</span><strong>{{ booking.pieces }} {{ booking.unitType }} · {{ booking.commodity }}</strong></div>
+          <div class="summary-row"><span>Supplier</span><strong>{{ booking.supplier }}</strong></div>
+          {% if booking.dcSlotDate %}
+          <div class="summary-row"><span>DC slot</span><strong>{{ booking.dcSlotDate }} {{ booking.dcSlotTime }}</strong></div>
+          {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.8rem">
+          <button onclick="copyTrackingLink()" class="ghost-button wide-button" style="text-align:left">🔗 Copy public tracking link</button>
+          <a href="{{ '#' }}" target="_blank" class="ghost-button wide-button" style="text-align:center">📄 Download waybill</a>
+          <a href="{{ '#' }}?ref={{ booking.ref }}" class="ghost-button wide-button" style="text-align:center">🚨 Report an issue</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const socket = io();
+const bookingRef = "{{ booking.ref }}";
+const log = document.getElementById('location-log');
+
+socket.on('connect', () => {
+  socket.emit('subscribe_tracking', { booking_ref: bookingRef });
+  appendLog('Connected to live tracking server…', '#16a34a');
+});
+
+socket.on('location_update', data => {
+  if (data.booking_ref !== bookingRef) return;
+  document.getElementById('map-coords').textContent = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+  document.getElementById('map-label').textContent = 'Driver is moving · Live';
+  document.getElementById('speed-pill').textContent = `Speed: ${data.speed} km/h`;
+  document.getElementById('eta-pill').textContent = `ETA: ${data.eta || 'calculating…'}`;
+  appendLog(`[${data.timestamp}] ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)} · ${data.speed}km/h`, '#155FA0');
+});
+
+socket.on('qr_event', data => {
+  if (data.booking_ref !== bookingRef) return;
+  const msgs = { collect:'✅ Driver confirmed collection', deliver:'📦 Delivery confirmed', pod:'📷 POD photo uploaded' };
+  appendLog(msgs[data.event] || data.event, '#16a34a');
+});
+
+socket.on('driver_issue', data => {
+  appendLog('⚠️ Driver reported: ' + data.type, '#d97706');
+});
+
+function appendLog(text, color) {
+  log.innerHTML = `<span style="color:${color}">${text}</span>\n` + log.innerHTML;
+}
+function copyTrackingLink(){
+  const url = window.location.origin + '/track/' + bookingRef;
+  navigator.clipboard.writeText(url).then(()=>alert('Public tracking link copied!\n\n' + url));
+}
+</script>
+{% endblock %}

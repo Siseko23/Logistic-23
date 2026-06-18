@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application Submitted — FreightFlow Nexus</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--accent:#155fa0;--accent-dark:#0e3a6b;--text:#1a1a2e;--muted:#6b7280;--line:#e5e7eb;--bg:#f8f9fc;--paper:#fff}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+  .success-card{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:3rem 2.5rem;max-width:520px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+  .success-icon{font-size:4rem;margin-bottom:1rem;animation:pop .4s ease}
+  @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+  .step-list{text-align:left;margin:1.5rem 0;display:flex;flex-direction:column;gap:.7rem}
+  .step-li{display:flex;gap:.8rem;align-items:flex-start;font-size:.92rem}
+  .step-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex-shrink:0;margin-top:.1rem}
+  .btn{display:inline-block;padding:.75rem 2rem;border-radius:999px;font-size:.93rem;font-weight:600;text-decoration:none;cursor:pointer;transition:transform .15s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--accent);color:#fff;border:none}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);margin-left:.5rem}
+</style>
+</head>
+<body>
+<div class="success-card">
+  <div class="success-icon">🎉</div>
+  <h1 style="font-size:1.6rem;margin-bottom:.5rem">Application submitted!</h1>
+  <p style="color:var(--muted);font-size:.93rem">Thank you for joining FreightFlow Nexus. Your application has been received and is now in our compliance queue.</p>
+
+  <div class="step-list">
+    <div class="step-li">
+      <div class="step-num">1</div>
+      <div><strong>Document review</strong><br><span style="color:var(--muted);font-size:.85rem">Our compliance team will verify your uploaded documents within 2–3 business days.</span></div>
+    </div>
+    <div class="step-li">
+      <div class="step-num">2</div>
+      <div><strong>Account activation email</strong><br><span style="color:var(--muted);font-size:.85rem">You'll receive login credentials and a welcome kit once approved.</span></div>
+    </div>
+    <div class="step-li">
+      <div class="step-num">3</div>
+      <div><strong>Start receiving bookings</strong><br><span style="color:var(--muted);font-size:.85rem">Your supplier profile goes live and FreightFlow AI will start matching you to shippers.</span></div>
+    </div>
+  </div>
+
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.9rem;margin-bottom:1.5rem;font-size:.87rem;color:#166534">
+    📧 A confirmation has been sent to your business email. Check your spam folder if you don't see it within 5 minutes.
+  </div>
+
+  <div>
+    <a href="/" class="btn btn-primary">Go to home</a>
+    <a href="/onboarding" class="btn btn-ghost">Start another application</a>
+  </div>
+  <p style="color:var(--muted);font-size:.8rem;margin-top:1.2rem">Questions? Email <a href="mailto:support@movement.com" style="color:var(--accent)">support@movement.com</a></p>
+</div>
+</body>
+</html>

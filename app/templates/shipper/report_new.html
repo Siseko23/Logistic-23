@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>New report</h1>
+      <p class="topbar-copy">Describe the issue with your booking. Our support team will respond within 2 hours and liaise with the supplier on your behalf. Do not attempt to contact the supplier or driver directly.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Report details</h2></div>
+      <form method="POST" action="{{ '#' }}" enctype="multipart/form-data">
+        <div class="form-grid">
+          <label>Booking reference
+            <select name="bookingRef" required>
+              <option value="">Select booking…</option>
+              {% for b in bookings %}
+              <option value="{{ b.ref }}" {% if selected_ref==b.ref %}selected{% endif %}>{{ b.ref }} — {{ b.route }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Report category
+            <select name="category" required onchange="updatePriority(this)">
+              <option value="">Select category…</option>
+              <option value="Missing cargo">Missing cargo</option>
+              <option value="Cargo damaged">Cargo damaged</option>
+              <option value="Wrong delivery address">Wrong delivery address</option>
+              <option value="Driver not arrived">Driver not arrived at collection</option>
+              <option value="Delivery significantly delayed">Delivery significantly delayed</option>
+              <option value="Partial delivery">Partial delivery — some items missing</option>
+              <option value="Incorrect cargo collected">Incorrect cargo collected</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Priority
+            <select name="priority" id="priority-select">
+              <option value="Normal">Normal</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Critical">Critical — cargo missing or major damage</option>
+            </select>
+          </label>
+          <label class="form-span">Describe the issue in detail
+            <textarea name="description" rows="5" placeholder="Please describe exactly what happened, when you noticed the issue, and what the expected vs actual outcome was. Include any reference numbers, item descriptions, or other relevant details." required></textarea>
+          </label>
+          <label class="form-span">Supporting evidence (optional)
+            <input type="file" name="evidence" accept=".pdf,.jpg,.jpeg,.png" multiple/>
+            <span class="muted" style="font-size:.8rem">Attach photos of damage, delivery note discrepancies, or other evidence. PDF, JPG, PNG accepted.</span>
+          </label>
+        </div>
+
+        <div style="background:rgba(155,28,28,.06);border:1px solid rgba(155,28,28,.15);border-radius:14px;padding:.9rem;margin:.8rem 0">
+          <p style="margin:0;font-size:.85rem;color:#9b1c1c"><strong>Important:</strong> For critical issues such as missing cargo or significant damage, our on-call team will be notified immediately. Do not negotiate directly with the supplier or driver. All claims are handled through this platform.</p>
+        </div>
+
+        <button type="submit" class="primary-button wide-button">Submit report</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>What happens next</h2></div>
+      <div class="stack" style="gap:.7rem">
+        {% for step in [
+          ('1','Report received','Your report is logged immediately and assigned a case number. You receive a confirmation email.','var(--accent)'),
+          ('2','Support team review','A FreightFlow support agent reviews your case within 2 hours and contacts the supplier on your behalf.','var(--green)'),
+          ('3','Supplier response','The supplier has 4 hours to respond with their account of events and provide POD documentation.','#7a5800'),
+          ('4','Resolution','FreightFlow mediates a resolution. If the supplier is at fault, a refund or compensation process is initiated.','var(--accent)'),
+        ] %}
+        <div style="display:flex;gap:.9rem;align-items:flex-start;padding:.8rem;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.42)">
+          <div style="width:32px;height:32px;border-radius:50%;background:{{ step[3] }};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">{{ step[0] }}</div>
+          <div>
+            <strong>{{ step[1] }}</strong>
+            <p class="muted" style="font-size:.85rem;margin:.2rem 0 0">{{ step[2] }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:1.2rem;border-top:1px solid var(--line);padding-top:1rem">
+        <p style="margin:0 0 .5rem;font-weight:600">Support contact</p>
+        <p class="muted" style="font-size:.88rem;margin:0">For urgent system issues, email: <a href="mailto:support@movement.com">support@movement.com</a></p>
+        <p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Response time: 2 hours (business hours) · 15 min (critical/on-call)</p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function updatePriority(sel) {
+  const critical = ['Missing cargo','Cargo damaged','Partial delivery — some items missing'];
+  const urgent = ['Driver not arrived','Incorrect cargo collected'];
+  const p = document.getElementById('priority-select');
+  if (critical.includes(sel.value)) p.value = 'Critical';
+  else if (urgent.includes(sel.value)) p.value = 'Urgent';
+  else p.value = 'Normal';
+}
+</script>
+{% endblock %}

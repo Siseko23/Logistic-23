@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .health-dial{text-align:center;padding:1.5rem;border-radius:22px;background:linear-gradient(135deg,rgba(47,108,87,.1),rgba(47,108,87,.03));border:1px solid rgba(47,108,87,.2)}
+  .health-score{font-size:4rem;font-weight:700;font-family:'IBM Plex Serif',serif;line-height:1}
+  .health-score.good{color:var(--green)}
+  .health-score.warning{color:#e8a000}
+  .health-score.bad{color:#c0392b}
+  .doc-row{border-radius:16px;border:1px solid var(--line);padding:.85rem 1rem;background:rgba(255,255,255,.5);display:flex;align-items:center;gap:.85rem}
+  .expiry-bar-wrap{background:rgba(21,95,160,.08);border-radius:999px;height:6px;margin-top:.4rem;overflow:hidden}
+  .expiry-bar{height:100%;border-radius:999px;transition:width .5s}
+  .expiry-bar.safe{background:var(--green)}
+  .expiry-bar.warn{background:#e8a000}
+  .expiry-bar.danger{background:#c0392b}
+  .days-badge{font-size:.72rem;padding:.2rem .65rem;border-radius:999px;font-weight:700}
+  .days-badge.safe{background:rgba(47,108,87,.12);color:var(--green)}
+  .days-badge.warn{background:rgba(232,160,0,.15);color:#856500}
+  .days-badge.danger{background:rgba(192,57,43,.12);color:#c0392b}
+  .doc-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+</style>
+{% endblock %}
+{% block content %}
+{% set verified_count = documents | selectattr('status', 'eq', 'Verified') | list | length %}
+{% set total_count = documents | length %}
+{% set expiring_soon = documents | selectattr('days_left', 'ne', None) | selectattr('days_left', 'lt', 90) | list | length %}
+{% set health_pct = ((verified_count / total_count) * 100) | round | int if total_count > 0 else 0 %}
+
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Compliance</p>
+      <h1>Compliance health</h1>
+      <p class="topbar-copy">Track your document status, expiry countdowns, and compliance health in one place.</p>
+    </div>
+    <a href="{{ url_for('supplier.performance') }}" class="primary-button">Upload documents →</a>
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Health score panel -->
+    <div class="stack">
+      <section class="panel">
+        <div class="health-dial">
+          <p class="eyebrow" style="margin:0 0 .5rem">Compliance health score</p>
+          <div class="health-score {{ 'good' if health_pct >= 80 else 'warning' if health_pct >= 50 else 'bad' }}">
+            {{ health_pct }}<span style="font-size:1.8rem;color:var(--muted)">%</span>
+          </div>
+          <div style="margin:.8rem auto;max-width:280px;background:rgba(0,0,0,.08);border-radius:999px;height:10px;overflow:hidden">
+            <div style="height:100%;border-radius:999px;width:{{ health_pct }}%;background:{{ 'var(--green)' if health_pct >= 80 else '#e8a000' if health_pct >= 50 else '#c0392b' }};transition:width .6s"></div>
+          </div>
+          <p style="font-size:.84rem;color:var(--muted);margin:.4rem 0 0">
+            {{ verified_count }} of {{ total_count }} documents verified
+            {% if expiring_soon > 0 %} · <strong style="color:#e8a000">{{ expiring_soon }} expiring soon</strong>{% endif %}
+          </p>
+        </div>
+      </section>
+
+      <!-- Summary stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card">
+          <p class="stat-label">Verified</p>
+          <strong style="color:var(--green)">{{ documents | selectattr('status','eq','Verified') | list | length }}</strong>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Pending review</p>
+          <strong style="color:#e8a000">{{ documents | selectattr('status','eq','Pending review') | list | length }}</strong>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Action needed</p>
+          <strong style="color:#c0392b">{{ documents | selectattr('status','eq','Awaiting re-upload') | list | length }}</strong>
+        </div>
+      </div>
+
+      <!-- What affects your score -->
+      <section class="panel" style="background:rgba(21,95,160,.03)">
+        <div class="panel-head"><h2>Compliance requirements</h2></div>
+        <div style="display:grid;gap:.5rem;font-size:.88rem">
+          <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed var(--line)">
+            <span>Valid insurance certificate</span>
+            <strong style="color:{{ 'var(--green)' if (documents | selectattr('name','eq','Insurance certificate') | selectattr('status','eq','Verified') | list | length) > 0 else '#c0392b' }}">
+              {{ '✓ Met' if (documents | selectattr('name','eq','Insurance certificate') | selectattr('status','eq','Verified') | list | length) > 0 else '✕ Missing' }}
+            </strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed var(--line)">
+            <span>Valid roadworthy certificate</span>
+            <strong style="color:{{ 'var(--green)' if (documents | selectattr('name','eq','Roadworthy certificate') | selectattr('status','eq','Verified') | list | length) > 0 else '#c0392b' }}">
+              {{ '✓ Met' if (documents | selectattr('name','eq','Roadworthy certificate') | selectattr('status','eq','Verified') | list | length) > 0 else '✕ Missing' }}
+            </strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.5rem 0">
+            <span>Valid operator permit</span>
+            <strong style="color:{{ 'var(--green)' if (documents | selectattr('name','eq','Operator permit') | selectattr('status','eq','Verified') | list | length) > 0 else '#c0392b' }}">
+              {{ '✓ Met' if (documents | selectattr('name','eq','Operator permit') | selectattr('status','eq','Verified') | list | length) > 0 else '✕ Missing' }}
+            </strong>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Document expiry tracking -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Document expiry tracker</h2>
+        <p>Stay ahead of renewals. Upload updated documents before they expire to avoid booking suspension.</p>
+      </div>
+
+      <div class="stack">
+        {% for doc in documents %}
+        {% set days = doc.days_left %}
+        {% set urgency = 'danger' if days is not none and days < 30 else 'warn' if days is not none and days < 90 else 'safe' %}
+        <div class="doc-row" style="{% if urgency == 'danger' %}border-color:rgba(192,57,43,.4);background:rgba(192,57,43,.04){% elif urgency == 'warn' %}border-color:rgba(232,160,0,.4){% endif %}">
+          <div class="doc-icon" style="background:{% if urgency == 'danger' %}rgba(192,57,43,.1){% elif urgency == 'warn' %}rgba(232,160,0,.1){% else %}rgba(47,108,87,.1){% endif %}">
+            {% if urgency == 'danger' %}🔴{% elif urgency == 'warn' %}🟡{% else %}🟢{% endif %}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <strong style="font-size:.9rem">{{ doc.name }}</strong>
+              {% if days is not none %}
+              <span class="days-badge {{ urgency }}">
+                {% if days < 0 %}EXPIRED {{ (-days) }} days ago
+                {% elif days == 0 %}Expires today!
+                {% else %}{{ days }} days left{% endif %}
+              </span>
+              {% endif %}
+            </div>
+            <p class="muted" style="font-size:.78rem;margin:.2rem 0 .15rem">
+              Status: <strong style="color:{{ 'var(--green)' if doc.status == 'Verified' else '#e8a000' if doc.status == 'Pending review' else '#c0392b' }}">{{ doc.status }}</strong>
+              {% if doc.expiry %} · Expires {{ doc.expiry }}{% endif %}
+            </p>
+            {% if days is not none %}
+            <div class="expiry-bar-wrap">
+              <div class="expiry-bar {{ urgency }}" style="width:{{ [[(days / 365 * 100) | round | int, 0] | max, 100] | min }}%"></div>
+            </div>
+            {% endif %}
+          </div>
+          {% if days is not none and days < 90 %}
+          <a href="{{ url_for('supplier.performance') }}" class="primary-button" style="padding:.4rem .8rem;font-size:.78rem;flex-shrink:0;border-radius:12px">
+            {% if days < 0 %}Re-upload{% else %}Renew{% endif %}
+          </a>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-card" style="padding:2rem;text-align:center">
+          <p class="muted">No documents uploaded yet. Upload your compliance documents to activate your account.</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if expiring_soon > 0 %}
+      <div style="margin-top:1rem;padding:.9rem;background:rgba(232,160,0,.08);border:1px solid rgba(232,160,0,.25);border-radius:14px;font-size:.84rem">
+        <strong>⚠ Renewal reminder:</strong> {{ expiring_soon }} document{{ 's' if expiring_soon > 1 }} expire within 90 days. Upload renewals now to avoid disruption to your bookings.
+      </div>
+      {% endif %}
+    </section>
+
+  </div>
+</div>
+{% endblock %}

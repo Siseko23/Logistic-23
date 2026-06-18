@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+@media print {
+  .no-print { display: none !important; }
+  .login-card { break-inside: avoid; border: 2px solid #000 !important; }
+  body { background: #fff !important; }
+}
+.login-card {
+  background:#fff;border:2px solid var(--line);border-radius:18px;padding:1.2rem 1.4rem;
+  page-break-inside:avoid;position:relative;overflow:hidden;
+}
+.login-card::before {
+  content:'';position:absolute;top:0;left:0;width:6px;height:100%;background:var(--accent);border-radius:3px 0 0 3px;
+}
+.card-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar no-print">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Driver login credentials</h1>
+      <p class="topbar-copy">Share these login cards with your drivers. Each driver uses their phone number and PIN to log into the FreightFlow Driver app.</p>
+    </div>
+    <button onclick="window.print()" class="primary-button no-print" style="align-self:flex-start;white-space:nowrap">🖨️ Print all cards</button>
+  </div>
+
+  <div style="background:rgba(255,200,0,.1);border:1px solid rgba(200,160,0,.25);border-radius:14px;padding:.85rem 1rem;no-print" class="no-print">
+    <p style="margin:0;font-size:.88rem"><strong>⚠️ Security notice:</strong> Keep these credentials confidential. Only share with the named driver. PINs can be reset at any time from the Driver Management page.</p>
+  </div>
+
+  <div class="card-grid">
+    {% for d in drivers %}
+    <div class="login-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.7rem">
+        <div>
+          <p style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">FreightFlow Driver App</p>
+          <strong style="font-size:1rem">{{ d.name }}</strong>
+        </div>
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(21,95,160,.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:.9rem;flex-shrink:0">
+          {{ d.name.split()[0][0] }}{{ d.name.split()[-1][0] }}
+        </div>
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:.7rem .9rem;margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+          <span style="font-size:.78rem;color:var(--muted)">Phone (login)</span>
+          <strong style="font-size:.85rem;font-family:monospace">{{ d.phone }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:.78rem;color:var(--muted)">PIN</span>
+          <strong style="font-size:1.1rem;font-family:monospace;letter-spacing:.2em;color:var(--accent)">{{ d.pin }}</strong>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem;font-size:.78rem">
+        <div><span style="color:var(--muted)">Vehicle:</span> <strong>{{ d.vehicleReg }}</strong></div>
+        <div><span style="color:var(--muted)">Type:</span> <strong>{{ d.vehicleType }}</strong></div>
+        <div style="grid-column:span 2"><span style="color:var(--muted)">License:</span> <strong>{{ d.licenseNo }} · {{ d.licenseType }}</strong></div>
+      </div>
+      <div style="margin-top:.7rem;padding:.5rem .7rem;background:rgba(21,95,160,.06);border-radius:10px;font-size:.72rem;color:var(--muted)">
+        🔒 If PIN is lost, contact your fleet manager to reset it.
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

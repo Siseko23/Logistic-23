@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FreightFlow Nexus — QR Scan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#f5f9ff;--accent:#155fa0;--accent-dark:#0f4676;--green:#2f6c57;--text:#12253f;--muted:#5f7692;--line:rgba(22,61,109,.12);font-family:'Space Grotesk',sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;background:radial-gradient(circle at top left,rgba(21,95,160,.14),transparent 28%),linear-gradient(180deg,#f7fbff,#eaf3ff)}
+    .card{background:#fff;border-radius:24px;padding:2rem;max-width:480px;width:100%;box-shadow:0 20px 50px rgba(18,37,63,.12);border:1px solid rgba(255,255,255,.5)}
+    .brand{display:flex;align-items:center;gap:.7rem;margin-bottom:1.5rem}
+    .brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#5f9dd5);color:#fff;font-weight:700;font-size:1rem;display:grid;place-items:center}
+    .brand small{color:var(--muted);font-size:.8rem;display:block}
+    h1{font-family:'IBM Plex Serif',serif;margin:0 0 .4rem;font-size:1.8rem;color:var(--text)}
+    .event-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem 1rem;border-radius:999px;font-weight:700;font-size:.88rem;margin-bottom:1rem}
+    .event-badge.collect{background:rgba(21,95,160,.12);color:var(--accent-dark)}
+    .event-badge.deliver{background:rgba(47,108,87,.12);color:var(--green)}
+    .info-row{display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+    .info-row:last-child{border-bottom:none}
+    .confirm-btn{width:100%;margin-top:1.2rem;padding:1rem;border:none;border-radius:14px;font:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s}
+    .confirm-btn.collect{background:var(--accent);color:#fff}
+    .confirm-btn.deliver{background:var(--green);color:#fff}
+    .confirm-btn:hover{transform:translateY(-2px)}
+    .not-found{text-align:center;color:var(--muted)}
+    .dc-warn{background:rgba(255,200,0,.15);border:1px solid rgba(255,160,0,.4);border-radius:12px;padding:.8rem 1rem;font-size:.86rem;color:#7a5800;margin:.8rem 0;font-weight:500}
+    .already-done{background:rgba(47,108,87,.08);border:1px solid rgba(47,108,87,.25);border-radius:12px;padding:.8rem 1rem;font-size:.86rem;color:var(--green);margin:.8rem 0}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">FF</div>
+      <div><strong>FreightFlow Nexus</strong><small>Cargo tracking — no app required</small></div>
+    </div>
+
+    {% if not booking %}
+    <div class="not-found">
+      <h1>Booking not found</h1>
+      <p>Reference <strong>{{ ref }}</strong> could not be found. Check the waybill and try again.</p>
+    </div>
+
+    {% elif event == 'collect' %}
+      <div class="event-badge collect">🚚 SCAN-OUT — COLLECTION</div>
+      <h1>Confirm cargo collected</h1>
+
+      {% if booking.status == 'Delivered' %}
+        <div class="already-done">✓ This booking has already been delivered. No further action needed.</div>
+      {% elif booking.status == 'In Transit' %}
+        <div class="already-done">✓ Collection already confirmed. Booking is In Transit.</div>
+      {% else %}
+        {% if booking.destinationType == 'Distribution Centre' %}
+        <div class="dc-warn">🏭 DC delivery — time-slot appointment: <strong>{{ booking.dcSlotTime }}</strong> on {{ booking.get('dcSlotDate','') }}. Arriving outside this window will trigger a performance penalty.</div>
+        {% endif %}
+        <div style="margin:.8rem 0">
+          <div class="info-row"><span>Booking ref</span><strong>{{ booking.ref }}</strong></div>
+          <div class="info-row"><span>Shipper</span><strong>{{ booking.shipper }}</strong></div>
+          <div class="info-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+          <div class="info-row"><span>Cargo</span><strong>{{ booking.pieces }} {{ 'pallets' if booking.unitType=='pallets' else 'pieces' }}</strong></div>
+          <div class="info-row"><span>Collection contact</span><strong>{{ booking.collectionContact }}</strong></div>
+          <div class="info-row"><span>Contact phone</span><strong>{{ booking.collectionPhone }}</strong></div>
+          <div class="info-row"><span>Destination type</span><strong>{{ booking.destinationType }}</strong></div>
+        </div>
+        <form method="POST" action="{{ '#' }}">
+          <input type="hidden" name="ref" value="{{ booking.ref }}"/>
+          <input type="hidden" name="event" value="collect"/>
+          <button type="submit" class="confirm-btn collect">✓ Confirm collection — cargo on board</button>
+        </form>
+        <p style="font-size:.77rem;color:var(--muted);text-align:center;margin:.7rem 0 0">Tapping confirm records a timestamped collection event and notifies the shipper immediately.</p>
+      {% endif %}
+
+    {% elif event == 'deliver' %}
+      <div class="event-badge deliver">📦 SCAN-IN — DELIVERY</div>
+      <h1>Confirm delivery</h1>
+
+      {% if booking.status == 'Delivered' %}
+        <div class="already-done">✓ Delivery already confirmed at {{ booking.deliveredAt }}. No further action needed.</div>
+      {% elif booking.status != 'In Transit' %}
+        <div class="dc-warn">⚠ Cargo has not been scanned out yet. Please complete the collection scan first.</div>
+      {% else %}
+        {% if booking.destinationType == 'Distribution Centre' %}
+        <div class="dc-warn">🏭 DC delivery — ensure you arrive within your booked slot: <strong>{{ booking.dcSlotTime }}</strong></div>
+        {% endif %}
+        <div style="margin:.8rem 0">
+          <div class="info-row"><span>Booking ref</span><strong>{{ booking.ref }}</strong></div>
+          <div class="info-row"><span>Shipper</span><strong>{{ booking.shipper }}</strong></div>
+          <div class="info-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+          <div class="info-row"><span>Delivery contact</span><strong>{{ booking.deliveryContact }}</strong></div>
+          <div class="info-row"><span>Contact phone</span><strong>{{ booking.deliveryPhone }}</strong></div>
+          <div class="info-row"><span>Collected at</span><strong>{{ booking.collectedAt }}</strong></div>
+        </div>
+        <form method="POST" action="{{ '#' }}">
+          <input type="hidden" name="ref" value="{{ booking.ref }}"/>
+          <input type="hidden" name="event" value="deliver"/>
+          <button type="submit" class="confirm-btn deliver">✓ Confirm delivery — cargo handed over</button>
+        </form>
+        <p style="font-size:.77rem;color:var(--muted);text-align:center;margin:.7rem 0 0">This updates booking status to Delivered and triggers supplier performance scoring.</p>
+      {% endif %}
+
+    {% else %}
+      <div class="not-found">
+        <h1>Invalid scan link</h1>
+        <p>The event type in this QR link is not recognised. Contact FreightFlow support.</p>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

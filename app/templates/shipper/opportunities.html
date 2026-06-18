@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .opp-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:1.4rem;transition:box-shadow .2s}
+  .opp-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.09)}
+  .opp-card.high{border-top:3px solid #27ae60}
+  .opp-card.medium{border-top:3px solid #e67e22}
+  .saving-pill{background:#d5f5e3;color:#1e8449;font-weight:700;font-size:.95rem;padding:.4rem 1rem;border-radius:999px;display:inline-block}
+  .urgency-chip{font-size:.72rem;font-weight:700;padding:.2rem .65rem;border-radius:999px;display:inline-block;margin-left:.4rem}
+  .urgency-high{background:#fadbd8;color:#922b21}
+  .urgency-medium{background:#fef9e7;color:#7d6608}
+  .savings-hero{background:linear-gradient(135deg,rgba(39,174,96,.12),rgba(21,95,160,.06));border:1px solid rgba(39,174,96,.2);border-radius:22px;padding:1.8rem;text-align:center}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>💡 Opportunity Finder</h1>
+      <p class="topbar-copy">FreightFlow AI has identified cost-saving opportunities based on your booking patterns and market data.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.ai_insights') }}" class="ghost-button">✦ AI Insights</a>
+      <a href="{{ url_for('shipper.health_score') }}" class="primary-button">📊 Health Score</a>
+    </div>
+  </div>
+
+  <!-- Hero savings -->
+  <div class="savings-hero">
+    <p class="eyebrow" style="margin-bottom:.4rem">Total annual savings identified</p>
+    <div style="font-size:3.5rem;font-weight:800;font-family:'IBM Plex Serif',serif;color:#1e8449;line-height:1">R {{ "{:,}".format(total_savings) }}</div>
+    <p style="color:var(--muted);margin:.5rem 0 0">Across {{ opportunities | length }} opportunities. Acting on all three saves approximately <strong>R {{ "{:,}".format(total_savings // 12) }}/month</strong>.</p>
+  </div>
+
+  <!-- Opportunities -->
+  <div>
+    <h2 style="margin-bottom:1rem">Identified opportunities</h2>
+    <div class="stack" style="gap:1rem">
+      {% for opp in opportunities %}
+      <div class="opp-card {{ opp.urgency | lower }}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:.7rem">
+          <div>
+            <strong style="font-size:1.05rem">{{ opp.title }}</strong>
+            <span class="urgency-chip urgency-{{ opp.urgency | lower }}">{{ opp.urgency }} priority</span>
+          </div>
+          <span class="saving-pill">Save {{ opp.saving }}/yr</span>
+        </div>
+        <p class="eyebrow" style="margin-bottom:.3rem">Route: {{ opp.route }}</p>
+        <p style="color:var(--muted);margin:0 0 1rem;font-size:.93rem">{{ opp.detail }}</p>
+        <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+          <div style="background:var(--bg);border-radius:999px;height:8px;flex:1;min-width:100px">
+            <div style="height:8px;border-radius:999px;background:{% if opp.urgency=='High' %}#27ae60{% else %}#e67e22{% endif %};width:{{ [opp.savingPct * 4, 100] | min }}%"></div>
+          </div>
+          <span style="color:var(--muted);font-size:.85rem">{{ opp.savingPct }}% saving</span>
+          <a href="{{ url_for('shipper.new_booking') }}" class="primary-button" style="padding:.5rem 1rem;font-size:.85rem">{{ opp.action }} →</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Summary table -->
+  <div class="stat-card" style="padding:1.5rem">
+    <h3 style="margin-bottom:.8rem">Summary</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <thead>
+        <tr style="border-bottom:2px solid var(--line)">
+          <th style="text-align:left;padding:.5rem 0;color:var(--muted);font-weight:600">Opportunity</th>
+          <th style="text-align:left;padding:.5rem 0;color:var(--muted);font-weight:600">Route</th>
+          <th style="text-align:right;padding:.5rem 0;color:var(--muted);font-weight:600">Annual saving</th>
+          <th style="text-align:right;padding:.5rem 0;color:var(--muted);font-weight:600">% reduction</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for opp in opportunities %}
+        <tr style="border-bottom:1px solid var(--line)">
+          <td style="padding:.6rem 0">{{ opp.title }}</td>
+          <td style="padding:.6rem 0;color:var(--muted)">{{ opp.route }}</td>
+          <td style="padding:.6rem 0;text-align:right;color:#27ae60;font-weight:700">{{ opp.saving }}</td>
+          <td style="padding:.6rem 0;text-align:right">{{ opp.savingPct }}%</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td colspan="2" style="padding:.7rem 0;font-weight:700">Total</td>
+          <td style="padding:.7rem 0;text-align:right;font-weight:700;color:#1e8449">R {{ "{:,}".format(total_savings) }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

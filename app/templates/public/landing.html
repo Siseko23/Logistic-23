@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreightFlow Nexus — AI-Powered Freight Marketplace</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#155fa0;--accent-dark:#0e3a6b;--text:#1a1a2e;--muted:#6b7280;--line:#e5e7eb;--bg:#f8f9fc;--paper:#fff}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+nav{background:var(--paper);border-bottom:1px solid var(--line);padding:.9rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50}
+.logo{font-size:1.1rem;font-weight:800;color:var(--accent-dark);flex:1}
+.logo span{font-size:.6rem;font-weight:700;background:var(--accent);color:#fff;padding:.1rem .4rem;border-radius:4px;margin-left:.3rem}
+.nav-cta{display:flex;gap:.5rem}
+.btn{display:inline-flex;align-items:center;padding:.5rem 1.1rem;border-radius:999px;font-size:.85rem;font-weight:600;text-decoration:none;transition:all .15s;cursor:pointer;border:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{border:1px solid var(--line);color:var(--text);background:transparent}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.hero{max-width:900px;margin:0 auto;padding:5rem 2rem 3rem;text-align:center}
+.hero-eyebrow{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:1rem}
+.hero-title{font-size:3.2rem;font-weight:800;font-family:'IBM Plex Serif',serif;color:var(--accent-dark);line-height:1.1;margin-bottom:1rem}
+.hero-sub{font-size:1.1rem;color:var(--muted);max-width:600px;margin:0 auto 2rem}
+.hero-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+.hero-btns .btn{padding:.75rem 1.8rem;font-size:.95rem}
+.stats-bar{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:1.5rem 2rem;display:flex;justify-content:center;gap:4rem;flex-wrap:wrap;text-align:center}
+.stat-item strong{display:block;font-size:2rem;font-weight:800;color:var(--accent-dark)}
+.stat-item span{font-size:.83rem;color:var(--muted)}
+.features{max-width:1000px;margin:4rem auto;padding:0 2rem}
+.features h2{text-align:center;font-family:'IBM Plex Serif',serif;font-size:2rem;color:var(--accent-dark);margin-bottom:.5rem}
+.features-sub{text-align:center;color:var(--muted);margin-bottom:3rem}
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.2rem}
+.feat-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.5rem}
+.feat-icon{font-size:2rem;margin-bottom:.7rem}
+.feat-title{font-weight:700;font-size:1rem;margin-bottom:.4rem}
+.feat-desc{color:var(--muted);font-size:.88rem;line-height:1.55}
+.how-it-works{background:var(--paper);border-top:1px solid var(--line);padding:4rem 2rem}
+.how-inner{max-width:800px;margin:0 auto}
+.how-inner h2{font-family:'IBM Plex Serif',serif;font-size:2rem;color:var(--accent-dark);margin-bottom:.5rem;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2.5rem}
+.step{text-align:center}
+.step-num{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:1rem;display:flex;align-items:center;justify-content:center;margin:0 auto .8rem}
+.step-title{font-weight:700;margin-bottom:.3rem}
+.step-desc{color:var(--muted);font-size:.85rem}
+.cta-section{max-width:700px;margin:4rem auto;padding:0 2rem;text-align:center}
+.cta-card{background:linear-gradient(135deg,var(--accent-dark),var(--accent));border-radius:24px;padding:3rem;color:#fff}
+.cta-card h2{font-family:'IBM Plex Serif',serif;font-size:2rem;margin-bottom:.7rem}
+.cta-card p{opacity:.85;margin-bottom:1.8rem}
+.cta-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+.btn-white{background:#fff;color:var(--accent-dark);font-weight:700}
+.btn-outline-white{border:2px solid rgba(255,255,255,.5);color:#fff;background:transparent;padding:.7rem 1.6rem}
+footer{text-align:center;padding:2rem;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">FreightFlow <span>Nexus</span></div>
+  <div class="nav-cta">
+    <a href="{{ url_for('public.onboarding') }}" class="btn btn-ghost">Join as supplier</a>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Log in</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Get started →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow">South Africa's AI-powered freight marketplace</div>
+  <h1 class="hero-title">Move freight smarter with AI-driven matching</h1>
+  <p class="hero-sub">FreightFlow Nexus connects shippers to verified transport suppliers through intelligent quote matching, real-time tracking, and deep logistics analytics.</p>
+  <div class="hero-btns">
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Start shipping →</a>
+    <a href="{{ url_for('public.onboarding') }}" class="btn btn-ghost">Join as a supplier</a>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stat-item"><strong>R 2.4B+</strong><span>Freight moved annually</span></div>
+  <div class="stat-item"><strong>180+</strong><span>Verified suppliers</span></div>
+  <div class="stat-item"><strong>94%</strong><span>On-time delivery rate</span></div>
+  <div class="stat-item"><strong>26.7%</strong><span>Platform fee — that's it</span></div>
+</div>
+
+<section class="features">
+  <h2>Everything logistics needs in one platform</h2>
+  <p class="features-sub">From booking to POD — with AI every step of the way</p>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🤖</div>
+      <div class="feat-title">AI Supplier Matching</div>
+      <div class="feat-desc">Our matching engine scores quotes on price (50%), performance (35%), and proximity (15%) to surface the best option — not just the cheapest.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Logistics Health Score</div>
+      <div class="feat-desc">A unique composite score measuring your cost efficiency, supplier reliability, and delivery performance — like a credit score for your logistics.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📍</div>
+      <div class="feat-title">Live Shipment Tracking</div>
+      <div class="feat-desc">Real-time status updates from booking confirmation to proof of delivery. Share a public tracking link with your clients.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⚠️</div>
+      <div class="feat-title">Delivery Risk Prediction</div>
+      <div class="feat-desc">AI flags high-risk bookings before they become problems — based on supplier history, route patterns, and DC slot constraints.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">💡</div>
+      <div class="feat-title">Opportunity Finder</div>
+      <div class="feat-desc">Automatically identifies cost-saving opportunities in your booking history — preferred rates, load consolidation, supplier switches.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📋</div>
+      <div class="feat-title">Executive Reporting</div>
+      <div class="feat-desc">One-click PDF, Excel, and CSV exports. Monthly logistics reports, financial summaries, and supplier performance scorecards.</div>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works">
+  <div class="how-inner">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Post a shipment</div>
+        <div class="step-desc">Enter your collection and delivery details, cargo specs, and preferred vehicle type.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Compare AI-ranked quotes</div>
+        <div class="step-desc">Verified suppliers submit quotes. Our AI ranks them by price, performance, and proximity.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Track & receive</div>
+        <div class="step-desc">Accept a quote, track in real time, and receive a digital proof of delivery when done.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="cta-card">
+    <h2>Ready to move smarter?</h2>
+    <p>Join thousands of shippers and suppliers already using FreightFlow Nexus.</p>
+    <div class="cta-btns">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-white">Get started for free →</a>
+      <a href="{{ url_for('public.onboarding') }}" class="btn btn-outline-white">Join as supplier</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 FreightFlow Nexus · <a href="mailto:support@movement.com" style="color:var(--accent)">support@movement.com</a></p>
+</footer>
+</body>
+</html>

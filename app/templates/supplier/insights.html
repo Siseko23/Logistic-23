@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+.ins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1rem}
+.ins-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.ins-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:860px){.ins-2,.ins-3{grid-template-columns:1fr}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.1rem 1.3rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:18px 18px 0 0}
+.kpi.g::before{background:linear-gradient(90deg,#2f6c57,#4caf50)}
+.kpi.a::before{background:linear-gradient(90deg,#e8a000,#ffc107)}
+.kpi.r::before{background:linear-gradient(90deg,#c0392b,#e74c3c)}
+.kpi.b::before{background:linear-gradient(90deg,#1565a0,#2196f3)}
+.kpi-n{font-size:1.85rem;font-weight:800;line-height:1;margin:.35rem 0 .15rem;color:var(--accent-dark)}
+.kpi-l{font-size:.74rem;text-transform:uppercase;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.kpi-s{font-size:.78rem;color:var(--muted);margin:.25rem 0 0}
+.sb{background:rgba(0,0,0,.07);border-radius:999px;height:6px;overflow:hidden;min-width:60px}
+.sb-f{height:100%;border-radius:999px}
+.bchip{font-size:.72rem;font-weight:700;padding:.15rem .45rem;border-radius:6px;margin-left:.3rem}
+.bchip.pos{background:rgba(47,108,87,.12);color:var(--accent-dark)}
+.bchip.neg{background:rgba(192,57,43,.1);color:#c0392b}
+.cbox{position:relative;width:100%}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+
+  <!-- Header -->
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · My insights</p>
+      <h1>Performance dashboard</h1>
+      <p class="topbar-copy">Your personal view of how {{ supplier.name }} is performing on the FreightFlow platform.</p>
+    </div>
+    <div style="align-self:flex-start;margin-top:.5rem;display:flex;align-items:center;gap:.6rem">
+      <div style="text-align:right">
+        <p class="muted" style="font-size:.74rem;margin:0">Overall score</p>
+        <p style="font-size:2rem;font-weight:800;margin:0;color:{% if supplier.score >= 4.5 %}var(--accent-dark){% elif supplier.score >= 2.5 %}#e8a000{% else %}#c0392b{% endif %}">
+          {{ supplier.score }} <span style="font-size:.9rem;color:var(--muted)">/ 5</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="ins-grid">
+    <div class="kpi g">
+      <p class="kpi-l">Total bookings</p>
+      <p class="kpi-n">{{ my_bookings|length }}</p>
+      <p class="kpi-s">{{ delivered|length }} delivered &middot; {{ active|length }} active</p>
+    </div>
+    <div class="kpi {% if on_time_pct >= 90 %}g{% elif on_time_pct >= 75 %}a{% else %}r{% endif %}">
+      <p class="kpi-l">On-time delivery</p>
+      <p class="kpi-n">{{ on_time_pct }}%</p>
+      <p class="kpi-s">Platform avg: {{ bench.avgOnTimePct }}%
+        <span class="bchip {{ 'pos' if on_time_pct >= bench.avgOnTimePct else 'neg' }}">
+          {{ '+' if on_time_pct >= bench.avgOnTimePct else '' }}{{ on_time_pct - bench.avgOnTimePct }}%
+        </span>
+      </p>
+    </div>
+    <div class="kpi {% if avg_rating >= 4.5 %}g{% elif avg_rating >= 3.5 %}a{% else %}r{% endif %}">
+      <p class="kpi-l">Avg shipper rating</p>
+      <p class="kpi-n">{{ avg_rating }}★</p>
+      <p class="kpi-s">From {{ delivered|selectattr('rating')|list|length }} rated deliveries</p>
+    </div>
+    <div class="kpi b">
+      <p class="kpi-l">Total earnings</p>
+      <p class="kpi-n" style="font-size:1.4rem">{{ zar(total_earned) }}</p>
+      <p class="kpi-s">Your quoted rates · excl. platform fee</p>
+    </div>
+    <div class="kpi g">
+      <p class="kpi-l">Paid out</p>
+      <p class="kpi-n" style="font-size:1.4rem">{{ zar(total_paid) }}</p>
+      <p class="kpi-s">Verified &amp; released</p>
+    </div>
+    <div class="kpi {% if outstanding > 0 %}a{% else %}g{% endif %}">
+      <p class="kpi-l">Outstanding</p>
+      <p class="kpi-n" style="font-size:1.4rem;color:{% if outstanding > 0 %}#7a5800{% else %}var(--accent-dark){% endif %}">{{ zar(outstanding) }}</p>
+      <p class="kpi-s">Pending invoice upload or verification</p>
+    </div>
+    <div class="kpi {% if stats.acceptanceRate >= 85 %}g{% elif stats.acceptanceRate >= 70 %}a{% else %}r{% endif %}">
+      <p class="kpi-l">Acceptance rate</p>
+      <p class="kpi-n">{{ stats.acceptanceRate }}%</p>
+      <p class="kpi-s">Platform avg: {{ bench.avgAcceptanceRate }}%
+        <span class="bchip {{ 'pos' if stats.acceptanceRate >= bench.avgAcceptanceRate else 'neg' }}">
+          {{ '+' if stats.acceptanceRate >= bench.avgAcceptanceRate else '' }}{{ stats.acceptanceRate - bench.avgAcceptanceRate }}%
+        </span>
+      </p>
+    </div>
+    <div class="kpi {% if stats.fleetUtilPct >= 70 %}g{% elif stats.fleetUtilPct >= 40 %}a{% else %}r{% endif %}">
+      <p class="kpi-l">Fleet utilisation</p>
+      <p class="kpi-n">{{ stats.fleetUtilPct }}%</p>
+      <p class="kpi-s">{{ my_drivers|length }} driver{{ 's' if my_drivers|length != 1 }} registered</p>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="ins-3">
+    <section class="panel">
+      <div class="panel-head" style="margin-bottom:.6rem"><h2>Score trajectory</h2><p>6-week rolling</p></div>
+      <div class="cbox" style="height:200px"><canvas id="trajChart"></canvas></div>
+      {% if trajectory %}
+      {% set tend = trajectory[-1] %} {% set tstart = trajectory[0] %}
+      <p style="font-size:.82rem;margin:.6rem 0 0;text-align:center;color:{% if tend > tstart %}var(--accent-dark){% elif tend < tstart %}#c0392b{% else %}var(--muted){% endif %}">
+        {% if tend > tstart %}▲ Improving — {{ tstart }} → {{ tend }}
+        {% elif tend < tstart %}▼ Declining — {{ tstart }} → {{ tend }}
+        {% else %}— Stable at {{ tend }}{% endif %}
+      </p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head" style="margin-bottom:.6rem"><h2>Monthly bookings</h2><p>Last 6 months</p></div>
+      <div class="cbox" style="height:200px"><canvas id="bookChart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head" style="margin-bottom:.6rem"><h2>Monthly revenue</h2><p>Your quoted rates</p></div>
+      <div class="cbox" style="height:200px"><canvas id="revChart"></canvas></div>
+    </section>
+  </div>
+
+  <!-- Score events + benchmarks -->
+  <div class="ins-2">
+    <section class="panel">
+      <div class="panel-head"><h2>Score events</h2><p>Every event that affected your score</p></div>
+      {% if score_hist %}
+      <div class="stack" style="gap:0">
+        {% for e in score_hist %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.84rem">
+          <div>
+            <span>{{ e.event }}</span>
+            <span class="muted" style="font-size:.75rem;margin-left:.4rem">{{ e.date }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-weight:700;font-size:.9rem;color:{% if e.impact > 0 %}var(--accent-dark){% elif e.impact < 0 %}#c0392b{% else %}var(--muted){% endif %}">
+              {% if e.impact > 0 %}+{% endif %}{{ e.impact }}
+            </span>
+            <span style="font-size:.7rem;padding:.1rem .4rem;border-radius:6px;
+              {% if e.impact > 0 %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+              {% elif e.impact < 0 %}background:rgba(192,57,43,.1);color:#c0392b
+              {% else %}background:rgba(0,0,0,.07);color:var(--muted){% endif %}">
+              {{ 'positive' if e.impact > 0 else 'negative' if e.impact < 0 else 'neutral' }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:.85rem">No score events recorded yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Your stats vs platform avg</h2><p>How you compare to all suppliers</p></div>
+      {% for label, val, avg, unit, fmt in [
+        ('Performance score', supplier.score, bench.avgScore, '', 'num'),
+        ('On-time delivery', on_time_pct, bench.avgOnTimePct, '%', 'pct'),
+        ('Acceptance rate', stats.acceptanceRate, bench.avgAcceptanceRate, '%', 'pct'),
+        ('Avg invoice turnaround', stats.avgInvoiceDays, bench.avgInvoiceDays, ' days', 'num'),
+        ('Fleet utilisation', stats.fleetUtilPct, bench.avgFleetUtil, '%', 'pct'),
+        ('Avg booking value', stats.avgBookingValue, bench.avgBookingValue, '', 'rand'),
+      ] %}
+      {% set diff = val - avg %}
+      {% set better = (diff > 0 and label != 'Avg invoice turnaround') or (diff < 0 and label == 'Avg invoice turnaround') %}
+      <div style="margin-bottom:.7rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem;font-size:.83rem">
+          <span>{{ label }}</span>
+          <div>
+            {% if fmt == 'rand' %}<strong>R {{ "{:,}".format(val|int) }}</strong>
+            {% else %}<strong>{{ val }}{{ unit }}</strong>{% endif %}
+            <span class="bchip {{ 'pos' if better else 'neg' }}">
+              {{ '+' if diff > 0 else '' }}{% if fmt == 'rand' %}R {{ "{:,}".format(diff|int|abs) }}{% else %}{{ diff|round(1) }}{{ unit }}{% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="sb">
+          {% if fmt == 'rand' %}
+          <div class="sb-f" style="width:{{ [100,(val/bench.avgBookingValue*60)|int]|min }}%;background:{% if better %}var(--accent){% else %}#e8a000{% endif %}"></div>
+          {% elif label == 'Performance score' %}
+          <div class="sb-f" style="width:{{ (val/5*100)|int }}%;background:{% if val>=4.5 %}var(--accent){% elif val>=2.5 %}#e8a000{% else %}#c0392b{% endif %}"></div>
+          {% else %}
+          <div class="sb-f" style="width:{{ val|int }}%;background:{% if better %}var(--accent){% else %}#e8a000{% endif %}"></div>
+          {% endif %}
+        </div>
+        <p class="muted" style="font-size:.72rem;margin:.15rem 0 0">Platform avg: {% if fmt=='rand' %}R {{ "{:,}".format(avg|int) }}{% else %}{{ avg }}{{ unit }}{% endif %}</p>
+      </div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <!-- Container quotes + drivers -->
+  <div class="ins-2">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Container quotes</h2>
+        <a href="{{ url_for('supplier.quote_requests') }}" style="font-size:.82rem;color:var(--accent);text-decoration:none">Manage →</a>
+      </div>
+      {% if my_quotes %}
+      {% for q in my_quotes %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.83rem;flex-wrap:wrap;gap:.3rem">
+        <div>
+          <strong>{{ q.origin }} → {{ q.destination }}</strong>
+          <span class="muted" style="font-size:.75rem;margin-left:.4rem">{{ q.containerType }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <strong style="color:var(--accent-dark)">R {{ "{:,.0f}".format(q.ratePerContainer) }}</strong>
+          <span style="font-size:.72rem;font-weight:700;padding:.15rem .45rem;border-radius:999px;
+            {% if q.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+            {% elif q.status=='Pending approval' %}background:rgba(255,200,0,.18);color:#7a5800
+            {% else %}background:rgba(192,57,43,.1);color:#9b1c1c{% endif %}">{{ q.status }}</span>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="muted" style="font-size:.85rem">No container quotes submitted yet.</p>
+      <a href="{{ '#' }}" class="primary-button" style="display:inline-block;margin-top:.8rem;text-decoration:none;font-size:.85rem">Submit a quote</a>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Your drivers</h2><p>{{ my_drivers|length }} registered</p></div>
+      {% for d in my_drivers %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.83rem;flex-wrap:wrap;gap:.3rem">
+        <div>
+          <strong>{{ d.name }}</strong>
+          <p class="muted" style="font-size:.75rem;margin:.1rem 0 0">{{ d.licenseType }} &middot; {{ d.vehicleType }}</p>
+        </div>
+        <div style="text-align:right">
+          <p style="margin:0;font-size:.78rem"><strong>{{ d.rating }}★</strong> &middot; {{ d.onTimeRate }}% on-time</p>
+          <span style="font-size:.72rem;font-weight:700;padding:.13rem .42rem;border-radius:999px;
+            {% if d.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+            {% else %}background:rgba(192,57,43,.1);color:#c0392b{% endif %}">{{ d.status }}</span>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:.85rem">No drivers registered.</p>
+      {% endfor %}
+    </section>
+  </div>
+
+  <!-- Tips based on performance -->
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.18)">
+    <div class="panel-head"><h2>💡 How to improve your score</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;padding-top:.3rem">
+      <div style="display:flex;gap:.6rem">
+        <span style="flex-shrink:0;font-size:1.2rem">⏰</span>
+        <div><strong style="font-size:.86rem">Always collect on time</strong><p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Late collections are the #1 cause of score drops. Confirm your driver is dispatched 2 hours before the collection window.</p></div>
+      </div>
+      <div style="display:flex;gap:.6rem">
+        <span style="flex-shrink:0;font-size:1.2rem">📋</span>
+        <div><strong style="font-size:.86rem">Submit invoices fast</strong><p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Faster invoice submission means faster payment. Aim for same day as delivery. Platform avg is {{ bench.avgInvoiceDays }} days — you average {{ stats.avgInvoiceDays }} days.</p></div>
+      </div>
+      <div style="display:flex;gap:.6rem">
+        <span style="flex-shrink:0;font-size:1.2rem">✅</span>
+        <div><strong style="font-size:.86rem">Accept more bookings</strong><p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Your acceptance rate is {{ stats.acceptanceRate }}%. Suppliers above 90% get priority in the AI allocation engine, meaning more bookings.</p></div>
+      </div>
+      <div style="display:flex;gap:.6rem">
+        <span style="flex-shrink:0;font-size:1.2rem">🚢</span>
+        <div><strong style="font-size:.86rem">Offer container routes</strong><p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Container bookings typically carry higher values. If you have a skeletal trailer, submit container quotes to unlock this revenue stream.</p></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const months   = {{ monthly | map(attribute='month') | list | tojson }};
+const bookings = {{ monthly | map(attribute='bookings') | list | tojson }};
+const revenues = {{ monthly | map(attribute='revenue') | list | tojson }};
+const traj     = {{ trajectory | tojson }};
+const weeks    = ['W1','W2','W3','W4','W5','W6'];
+const minScore = 2.5;
+
+// Score trajectory
+new Chart(document.getElementById('trajChart'),{
+  type:'line',
+  data:{labels:weeks,datasets:[{data:traj,borderColor:'#2f6c57',backgroundColor:'rgba(47,108,87,.08)',
+    tension:.35,fill:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#2f6c57'}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Score: ${c.raw}`}}},
+    scales:{y:{min:1,max:5,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9}}},
+            x:{grid:{display:false},ticks:{font:{size:9}}}},
+    animation:{duration:700,easing:'easeOutQuart'}}
+});
+
+// Monthly bookings
+new Chart(document.getElementById('bookChart'),{
+  type:'bar',
+  data:{labels:months,datasets:[{data:bookings,backgroundColor:'rgba(47,108,87,.7)',borderRadius:5,borderSkipped:false}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9}}},
+            x:{grid:{display:false},ticks:{font:{size:9}}}},
+    animation:{duration:600}}
+});
+
+// Monthly revenue
+new Chart(document.getElementById('revChart'),{
+  type:'line',
+  data:{labels:months,datasets:[{data:revenues,borderColor:'#1565a0',backgroundColor:'rgba(21,101,160,.08)',
+    tension:.35,fill:true,borderWidth:2,pointRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`R ${c.raw.toLocaleString()}`}}},
+    scales:{y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9},callback:v=>'R'+Math.round(v/1000)+'k'}},
+            x:{grid:{display:false},ticks:{font:{size:9}}}},
+    animation:{duration:700}}
+});
+</script>
+{% endblock %}

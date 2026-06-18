@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+.doc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.doc-modal.open{display:flex}
+.doc-modal-inner{background:#fff;border-radius:20px;width:100%;max-width:680px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column}
+.doc-modal-header{padding:.9rem 1.2rem;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.doc-modal-body{flex:1;overflow:auto;padding:1rem;background:#f8fafc;display:flex;align-items:flex-start;justify-content:center}
+.doc-modal-body iframe{width:100%;min-height:500px;border:none;border-radius:10px;background:#fff}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Compliance documents</h1>
+      <p class="topbar-copy">Upload and manage all required PDF compliance documents. Click "View" to inspect a document inline.</p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Required documents checklist</h2><p>All four must be verified for your account to be active.</p></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem">
+      {% set required = ['Insurance certificate','Roadworthy certificate','Operator permit','Tax clearance certificate'] %}
+      {% for req in required %}
+        {% set found = documents | selectattr('name','equalto',req) | list %}
+        <div style="border:1px solid var(--line);border-radius:18px;padding:1rem;background:rgba(255,255,255,.42)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+            <strong style="font-size:.9rem">{{ req }}</strong>
+            {% if found %}
+              <span class="pill {% if found[0].status=='Verified' %}badge{% endif %}" style="font-size:.7rem">{{ found[0].status }}</span>
+            {% else %}
+              <span style="font-size:.75rem;background:rgba(181,84,46,.12);color:#7a3b00;padding:.2rem .6rem;border-radius:999px">Missing</span>
+            {% endif %}
+          </div>
+          {% if found %}
+          <p class="muted" style="font-size:.78rem;margin:.4rem 0 .3rem">Updated {{ found[0].updatedAt }}</p>
+          <button class="ghost-button" style="padding:.35rem .8rem;font-size:.75rem" onclick="viewDoc('{{ found[0].id }}','{{ found[0].name }}')">👁 View</button>
+          {% else %}
+          <p class="muted" style="font-size:.78rem;margin:.4rem 0 0">Not yet uploaded</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Upload compliance document</h2><p>PDF only. Reviewed by admin within 24 hours.</p></div>
+      <form method="POST" enctype="multipart/form-data" action="{{ '#' }}">
+        <div class="form-grid compact-two">
+          <label>Document type
+            <select name="docType">
+              <option>Insurance certificate</option>
+              <option>Roadworthy certificate</option>
+              <option>Operator permit</option>
+              <option>Tax clearance certificate</option>
+              <option>Cross-border permit</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>Expiry date<input name="expiry" type="date"/></label>
+          <label class="form-span">PDF document (required)<input type="file" name="document" accept=".pdf" required/></label>
+        </div>
+        <button type="submit" class="primary-button wide-button">Upload document</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Document vault</h2></div>
+      <div class="table-like">
+        {% for d in documents %}
+        <div class="table-row">
+          <div style="flex:1">
+            <strong>{{ d.name }}</strong>
+            <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">{{ d.supplier }}</p>
+            {% if d.expiry %}<p style="font-size:.75rem;margin:.1rem 0 0;color:{% if d.days_left and d.days_left < 30 %}#c0392b{% else %}var(--muted){% endif %}">Exp: {{ d.expiry }}</p>{% endif %}
+          </div>
+          <span class="pill {% if d.status=='Verified' %}badge{% endif %}">{{ d.status }}</span>
+          <button class="ghost-button" style="padding:.4rem .85rem;font-size:.82rem" onclick="viewDoc('{{ d.id }}','{{ d.name }}')">👁 View</button>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Document viewer modal -->
+<div class="doc-modal" id="doc-modal" onclick="closeModal(event)">
+  <div class="doc-modal-inner">
+    <div class="doc-modal-header">
+      <strong id="modal-title">Document</strong>
+      <button onclick="document.getElementById('doc-modal').classList.remove('open')" style="border:none;background:none;font-size:1.2rem;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div class="doc-modal-body">
+      <div id="modal-content" style="width:100%;text-align:center">
+        <div style="background:#fff;border-radius:16px;padding:2.5rem 2rem;border:1px solid var(--line);max-width:500px;margin:0 auto">
+          <p style="font-size:3rem;margin-bottom:.5rem">📄</p>
+          <h3 id="modal-doc-name" style="margin-bottom:.5rem"></h3>
+          <p style="color:var(--muted);font-size:.88rem;margin-bottom:.5rem" id="modal-doc-status"></p>
+          <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem">In production, the PDF document would be rendered here directly from secure S3 storage.</p>
+          <div style="background:#f8fafc;border-radius:12px;padding:.8rem;font-size:.82rem;color:var(--muted);text-align:left">
+            <p style="margin:0 0 .4rem;font-weight:600">Document details</p>
+            <p id="modal-doc-details" style="margin:0;font-family:monospace"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const DOCS = {{ documents | tojson }};
+function viewDoc(id, name) {
+  const doc = DOCS.find(d => d.id === id);
+  document.getElementById('modal-title').textContent = name;
+  document.getElementById('modal-doc-name').textContent = name;
+  document.getElementById('modal-doc-status').textContent = 'Status: ' + (doc ? doc.status : '—');
+  document.getElementById('modal-doc-details').textContent = doc ?
+    `Uploaded: ${doc.updatedAt}\nSupplier: ${doc.supplier}\nExpiry: ${doc.expiry || 'N/A'}` : '';
+  document.getElementById('doc-modal').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('doc-modal'))
+    document.getElementById('doc-modal').classList.remove('open');
+}
+</script>
+{% endblock %}

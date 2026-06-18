@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .risk-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.3rem}
+  .risk-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .9rem;border-radius:999px;font-weight:700;font-size:.85rem}
+  .risk-Low{background:#d5f5e3;color:#1e8449}
+  .risk-Medium{background:#fef9e7;color:#7d6608}
+  .risk-High{background:#fadbd8;color:#922b21}
+  .risk-meter-bg{background:var(--bg);border-radius:999px;height:10px;margin:.6rem 0}
+  .factor-tag{display:inline-block;font-size:.75rem;padding:.2rem .6rem;border-radius:6px;background:rgba(21,95,160,.08);color:var(--accent-dark);margin:.2rem .2rem 0 0}
+  .summary-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;background:var(--bg);border-radius:16px;padding:.8rem}
+  .strip-item{text-align:center}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>⚠️ Delivery Risk Prediction</h1>
+      <p class="topbar-copy">FreightFlow AI assesses each active booking for delivery risk based on supplier history, booking patterns, and route data.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.ai_insights') }}" class="ghost-button">✦ AI Insights</a>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-strip">
+    {% set high_count = booking_risks | selectattr('risk','equalto','High') | list | length %}
+    {% set med_count = booking_risks | selectattr('risk','equalto','Medium') | list | length %}
+    {% set low_count = booking_risks | selectattr('risk','equalto','Low') | list | length %}
+    <div class="strip-item">
+      <div style="font-size:2rem;font-weight:700;color:#c0392b">{{ high_count }}</div>
+      <p class="small-note">High risk</p>
+    </div>
+    <div class="strip-item">
+      <div style="font-size:2rem;font-weight:700;color:#e67e22">{{ med_count }}</div>
+      <p class="small-note">Medium risk</p>
+    </div>
+    <div class="strip-item">
+      <div style="font-size:2rem;font-weight:700;color:#27ae60">{{ low_count }}</div>
+      <p class="small-note">Low risk</p>
+    </div>
+  </div>
+
+  <!-- Risk cards -->
+  <div class="stack" style="gap:.9rem">
+    {% for b in booking_risks %}
+    <div class="risk-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <p class="eyebrow" style="margin-bottom:.1rem">Booking {{ b.ref }}</p>
+          <strong style="font-size:1.05rem">{{ b.route }}</strong>
+          <p style="color:var(--muted);margin:.2rem 0 0;font-size:.88rem">{{ b.shipper }} · {{ b.supplier }} · Status: {{ b.status }}</p>
+        </div>
+        <div style="text-align:right">
+          <span class="risk-badge risk-{{ b.risk }}">
+            {% if b.risk == 'High' %}🔴{% elif b.risk == 'Medium' %}🟡{% else %}🟢{% endif %}
+            {{ b.risk }} Risk
+          </span>
+          <p class="small-note" style="margin:.3rem 0 0">{{ b.risk_pct }}% probability of delay</p>
+        </div>
+      </div>
+      <div class="risk-meter-bg">
+        <div style="width:{{ b.risk_pct }}%;height:10px;border-radius:999px;background:{{ b.color }};transition:width .8s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.8rem;margin-top:.5rem">
+        <div>
+          <p class="small-note" style="margin-bottom:.3rem">Risk factors:</p>
+          {% if b.factors %}
+            {% for f in b.factors %}<span class="factor-tag">{{ f }}</span>{% endfor %}
+          {% else %}
+            <span class="factor-tag">No significant risk factors identified</span>
+          {% endif %}
+        </div>
+        <div style="text-align:right">
+          <p class="small-note">Supplier score: <strong style="color:var(--accent-dark)">{{ b.supplierScore }} / 5.0</strong></p>
+          <p class="small-note">Booking value: <strong>{{ zar(b.value) }}</strong></p>
+        </div>
+      </div>
+      {% if b.risk == 'High' %}
+      <div style="margin-top:.8rem;padding:.7rem;background:#fdf2f2;border-radius:10px;border:1px solid #fadbd8">
+        <strong style="color:#c0392b;font-size:.88rem">⚠️ Recommended action:</strong>
+        <p style="color:#922b21;margin:.2rem 0 0;font-size:.85rem">Contact FreightFlow support or the assigned supplier now to confirm delivery confirmation procedures for this booking.</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- How risk is calculated -->
+  <div class="stat-card" style="padding:1.5rem">
+    <h3 style="margin-bottom:.8rem">How risk is calculated</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
+      <div>
+        <p class="eyebrow" style="margin-bottom:.3rem">Supplier history</p>
+        <p class="small-note">On-time delivery rate, cancellation rate, and performance score trajectory over the last 50 bookings.</p>
+      </div>
+      <div>
+        <p class="eyebrow" style="margin-bottom:.3rem">Booking complexity</p>
+        <p class="small-note">DC slot deliveries, long-haul distances, and time-critical windows increase risk weighting.</p>
+      </div>
+      <div>
+        <p class="eyebrow" style="margin-bottom:.3rem">Capacity constraints</p>
+        <p class="small-note">Suppliers with high booking volume in the same window carry higher delivery pressure risk.</p>
+      </div>
+      <div>
+        <p class="eyebrow" style="margin-bottom:.3rem">Historical patterns</p>
+        <p class="small-note">Routes and time periods with historically higher delay rates are flagged automatically.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

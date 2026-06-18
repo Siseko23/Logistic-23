@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .realloc-step{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px dashed var(--line)}
+  .realloc-step:last-child{border-bottom:none}
+  .step-num{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;border:2px solid var(--line)}
+  .step-num.done{background:rgba(192,57,43,.12);border-color:#c0392b;color:#c0392b}
+  .step-num.active{background:rgba(21,95,160,.12);border-color:var(--accent);color:var(--accent)}
+  .step-num.queued{background:rgba(255,255,255,.5);color:var(--muted)}
+  .step-num.accepted{background:rgba(47,108,87,.12);border-color:var(--green);color:var(--green)}
+  .offer-badge{font-size:.72rem;padding:.2rem .6rem;border-radius:999px;font-weight:700}
+  .offer-badge.timed-out{background:rgba(192,57,43,.1);color:#c0392b}
+  .offer-badge.active{background:rgba(21,95,160,.1);color:var(--accent)}
+  .offer-badge.queued{background:rgba(95,118,146,.1);color:var(--muted)}
+  .timer-bar{background:rgba(21,95,160,.1);border-radius:999px;height:6px;margin-top:.5rem;overflow:hidden}
+  .timer-fill{height:100%;border-radius:999px;background:var(--accent);animation:drain 7200s linear forwards}
+  @keyframes drain{from{width:60%}to{width:0%}}
+  .pulse-ring{display:inline-flex;width:10px;height:10px;border-radius:50%;background:var(--accent);animation:ring 1.2s infinite;margin-right:.3rem}
+  @keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(21,95,160,.4)}50%{box-shadow:0 0 0 6px rgba(21,95,160,0)}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Booking status</p>
+      <h1>Supplier allocation — {{ booking.ref }}</h1>
+      <p class="topbar-copy">{{ booking.route }} · We're finding the best available supplier for you.</p>
+    </div>
+    <a href="{{ url_for('shipper.bookings') }}" class="ghost-button">← Back to bookings</a>
+  </div>
+
+  {% if timeline %}
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Allocation queue -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Supplier offer queue</h2>
+        <p>Offers are sent sequentially based on AI score, proximity, and performance. Each supplier has a 2-hour response window.</p>
+      </div>
+
+      {% for offer in timeline.offers %}
+      <div class="realloc-step">
+        <div class="step-num {{ 'done' if offer.status == 'Timed out' else 'active' if offer.status == 'Active' else 'accepted' if offer.status == 'Accepted' else 'queued' }}">
+          {% if offer.status == 'Timed out' %}✕
+          {% elif offer.status == 'Active' %}<span class="pulse-ring" style="margin:0"></span>
+          {% elif offer.status == 'Accepted' %}✓
+          {% else %}{{ loop.index }}{% endif %}
+        </div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+            <strong>{{ offer.supplierName }}</strong>
+            <span class="offer-badge {{ offer.status | lower | replace(' ', '-') }}">{{ offer.status }}</span>
+          </div>
+          {% if offer.offeredAt %}
+          <p class="muted" style="font-size:.82rem;margin:.3rem 0 .15rem">Offered: {{ offer.offeredAt }}</p>
+          {% endif %}
+          {% if offer.status == 'Active' and offer.expiresAt %}
+          <p style="font-size:.82rem;color:var(--accent);margin:.15rem 0 .3rem">⏱ Expires: {{ offer.expiresAt }}</p>
+          <div class="timer-bar"><div class="timer-fill"></div></div>
+          {% elif offer.status == 'Queued' %}
+          <p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Waiting in queue — will be offered if current offer times out</p>
+          {% elif offer.outcome %}
+          <p class="muted" style="font-size:.82rem;margin:.3rem 0 0">{{ offer.outcome }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div style="margin-top:1rem;padding:.9rem;background:rgba(21,95,160,.04);border-radius:14px;font-size:.84rem;color:var(--muted)">
+        <strong>What happens next?</strong> If the current offer times out or is rejected, the platform will automatically notify the next queued supplier. You'll receive an email confirmation once a supplier accepts.
+      </div>
+    </section>
+
+    <!-- Status summary -->
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Booking summary</h2></div>
+        <div class="stack" style="gap:.4rem">
+          <div class="summary-row"><span>Reference</span><strong>{{ booking.ref }}</strong></div>
+          <div class="summary-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+          <div class="summary-row"><span>Status</span>
+            <span style="background:rgba(21,95,160,.1);color:var(--accent-dark);border-radius:999px;padding:.2rem .7rem;font-size:.8rem;font-weight:700">{{ timeline.status }}</span>
+          </div>
+          <div class="summary-row"><span>Created</span><strong>{{ timeline.created }}</strong></div>
+          <div class="summary-row"><span>Offers sent</span><strong>{{ timeline.offers|selectattr('offeredAt')|list|length }}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.18)">
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="font-size:1.5rem">✅</span>
+          <div>
+            <strong>Allocation guarantee</strong>
+            <p class="muted" style="margin:.3rem 0 0;font-size:.88rem">FreightFlow Nexus has {{ timeline.offers|length }} qualified suppliers queued for this route. If all queued suppliers are exhausted, a support agent is automatically notified to source additional capacity.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Need urgent help?</h2></div>
+        <p class="muted" style="font-size:.88rem;margin:0 0 .9rem">If your cargo is time-critical, contact our operations desk directly.</p>
+        <a href="mailto:support@movement.com?subject=Urgent: {{ booking.ref }}" class="ghost-button wide-button">📧 Contact support</a>
+      </section>
+    </div>
+
+  </div>
+  {% else %}
+  <section class="panel" style="text-align:center;padding:3rem">
+    <p style="font-size:2rem;margin:0">✅</p>
+    <h2 style="font-family:'IBM Plex Serif',serif;margin:.5rem 0">Supplier confirmed</h2>
+    <p class="muted">A supplier has been assigned to this booking. View the booking detail for full information.</p>
+    <a href="{{ url_for('shipper.booking_detail', ref=booking.ref) }}" class="primary-button" style="display:inline-block;margin-top:.8rem">View booking →</a>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

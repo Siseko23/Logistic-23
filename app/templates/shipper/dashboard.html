@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>Welcome back, {{ user }}</h1>
+      <p class="topbar-copy">Your shipment overview, quote activity, and booking status at a glance.</p>
+    </div>
+    <a href="{{ url_for('shipper.new_booking') }}" class="primary-button" style="align-self:flex-start;margin-top:1rem">+ New shipment</a>
+  </div>
+
+  <div class="stats-grid">
+    <article class="stat-card"><p class="stat-label">Active bookings</p><strong>{{ bookings|length }}</strong><p class="muted">Across all statuses</p></article>
+    <article class="stat-card"><p class="stat-label">In transit</p><strong>1</strong><p class="muted">Real-time tracking active</p></article>
+    <article class="stat-card"><p class="stat-label">Avg. saving vs market</p><strong>18%</strong><p class="muted">This month</p></article>
+    <article class="stat-card"><p class="stat-label">Total spend (Apr)</p><strong>R 37 654</strong><p class="muted">Across all routes</p></article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Shipment lifecycle</h2>
+      <p>Track the main shipper journey from request through delivery.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
+      {% for step,detail in [("Request submitted","Shipment data captured and matching started."),("Supplier confirmation","Chosen transporter accepts the booking."),("Collection scheduled","Pickup slot and waybill shared."),("In transit","Status updates pushed to dashboard."),("Delivered","Proof of delivery stored and transaction closed.")] %}
+      <article class="timeline-card">
+        <h3 style="font-family:'IBM Plex Serif',Georgia,serif;margin:0 0 .4rem;font-size:1rem">{{ step }}</h3>
+        <p class="muted" style="margin:0;font-size:.88rem">{{ detail }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recent bookings</h2>
+      <p>Latest booking references, routes, and supplier response state.</p>
+    </div>
+    <div class="table-like">
+      {% for b in bookings %}
+      <div class="table-row">
+        <div>
+          <strong>{{ b.ref }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+        </div>
+        <div>
+          <p>{{ b.supplier }}</p>
+          <p class="muted">R {{ "{:,.0f}".format(b.value) }}</p>
+        </div>
+        <div>
+          <p>{{ b.status }}</p>
+          <p class="muted">{{ b.supplierResponseWindow }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Finance · Invoice verification</p>
+      <h1>Invoice verification &amp; payments</h1>
+      <p class="topbar-copy">Suppliers are paid their quoted rate — not the shipper price. Verify each invoice before releasing payment. Platform fee is retained automatically.</p>
+    </div>
+    {% if pending_verification %}
+    <span style="align-self:flex-start;margin-top:.5rem;background:rgba(155,28,28,.1);color:#9b1c1c;font-size:.82rem;font-weight:700;padding:.4rem .9rem;border-radius:999px">
+      ⏳ {{ pending_verification|length }} invoice{{ 's' if pending_verification|length > 1 }} awaiting verification
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Summary cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem">
+    {% set paid_pos = pos|selectattr('paymentStatus','eq','Paid')|list %}
+    {% set verified_pos = pos|selectattr('invoiceVerified','eq',true)|list %}
+    {% set pending_pos = pos|selectattr('paymentStatus','eq','Awaiting invoice')|list %}
+    <div class="panel" style="text-align:center;padding:1rem;border-top:3px solid var(--accent)">
+      <p style="font-size:1.7rem;font-weight:800;margin:0;color:var(--accent-dark)">{{ pos|length }}</p>
+      <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Total POs</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem;border-top:3px solid #e8a000">
+      <p style="font-size:1.7rem;font-weight:800;margin:0;color:#7a5800">{{ pending_pos|length }}</p>
+      <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Awaiting invoice</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem;border-top:3px solid #1565a0">
+      <p style="font-size:1.7rem;font-weight:800;margin:0;color:#1565a0">{{ pending_verification|length }}</p>
+      <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Awaiting verification</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem;border-top:3px solid #2f6c57">
+      <p style="font-size:1.7rem;font-weight:800;margin:0;color:var(--accent-dark)">{{ zar(paid_pos|sum(attribute='netPayable')) }}</p>
+      <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Total paid out</p>
+    </div>
+    <div class="panel" style="text-align:center;padding:1rem;border-top:3px solid #6a1b9a">
+      <p style="font-size:1.7rem;font-weight:800;margin:0;color:#6a1b9a">{{ zar(pos|sum(attribute='platformFee')) }}</p>
+      <p class="muted" style="font-size:.8rem;margin:.3rem 0 0">Platform fees retained</p>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterPO('all',this)">All ({{ pos|length }})</button>
+    <button class="nav-chip" onclick="filterPO('Awaiting invoice',this)">Awaiting invoice</button>
+    <button class="nav-chip" onclick="filterPO('Invoice Received',this)">Invoice received</button>
+    <button class="nav-chip" onclick="filterPO('Invoice Verified',this)">Verified</button>
+    <button class="nav-chip" onclick="filterPO('Paid',this)">Paid</button>
+    <button class="nav-chip" onclick="filterPO('Invoice Rejected',this)">Rejected</button>
+  </div>
+
+  <section class="panel" style="padding:0;overflow:hidden">
+    <div style="display:grid;grid-template-columns:1.2fr 1fr .9fr .9fr .9fr 1fr 1.3fr;gap:.5rem;padding:.55rem 1.1rem;background:rgba(0,0,0,.03);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">
+      <span>PO / Supplier</span><span>Booking</span><span>Supplier rate</span><span>Platform fee</span><span>Shipper paid</span><span>Status</span><span>Actions</span>
+    </div>
+
+    {% for po in pos %}
+    <div class="po-admin-row" data-status="{{ po.paymentStatus }}"
+      style="display:grid;grid-template-columns:1.2fr 1fr .9fr .9fr .9fr 1fr 1.3fr;gap:.5rem;align-items:start;padding:.85rem 1.1rem;border-bottom:1px solid var(--line);font-size:.83rem;
+      {% if po.paymentStatus=='Awaiting invoice' %}background:rgba(255,200,0,.04)
+      {% elif po.status=='Invoice Received' %}background:rgba(21,101,160,.04)
+      {% elif po.status=='Invoice Verified' or po.status=='Approved for payment' %}background:rgba(47,108,87,.04)
+      {% elif po.status=='Invoice Rejected' %}background:rgba(192,57,43,.04){% endif %}">
+
+      <div>
+        <strong>{{ po.id }}</strong>
+        <p class="muted" style="font-size:.76rem;margin:.1rem 0 0">{{ po.supplierName }}</p>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">Issued {{ po.issuedAt }}</p>
+      </div>
+
+      <div>
+        <strong style="font-size:.82rem">{{ po.ref }}</strong>
+        <p class="muted" style="font-size:.76rem;margin:.1rem 0 0">{{ po.route }}</p>
+        <p style="font-size:.74rem;margin:.1rem 0 0;color:var(--muted)">{{ po.commodity }}</p>
+      </div>
+
+      <!-- Supplier rate — what they get paid -->
+      <div>
+        <strong style="color:var(--accent-dark);font-size:.9rem">{{ zar(po.supplierRate) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">supplier earns</p>
+      </div>
+
+      <!-- Platform fee retained -->
+      <div>
+        <strong style="color:#9b1c1c;font-size:.9rem">{{ zar(po.platformFee) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">platform fee</p>
+      </div>
+
+      <!-- What shipper paid -->
+      <div>
+        <strong style="font-size:.88rem">{{ zar(po.agreedRate) }}</strong>
+        <p class="muted" style="font-size:.72rem;margin:.1rem 0 0">shipper charged</p>
+      </div>
+
+      <!-- Status -->
+      <div>
+        <span style="font-size:.74rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;
+          {% if po.paymentStatus=='Paid' %}background:rgba(47,108,87,.12);color:var(--accent-dark)
+          {% elif po.paymentStatus=='Awaiting invoice' %}background:rgba(255,200,0,.18);color:#7a5800
+          {% elif po.paymentStatus=='Approved for payment' %}background:rgba(47,108,87,.12);color:var(--accent-dark)
+          {% elif po.paymentStatus=='Invoice rejected' %}background:rgba(192,57,43,.1);color:#9b1c1c
+          {% else %}background:rgba(21,101,160,.1);color:#1565a0{% endif %}">
+          {{ po.paymentStatus or po.status }}
+        </span>
+        {% if po.invoiceFilename %}
+        <p style="font-size:.72rem;margin:.3rem 0 0;color:#1565a0">📄 {{ po.invoiceFilename }}</p>
+        {% endif %}
+        {% if po.invoiceVerifiedBy %}
+        <p class="muted" style="font-size:.7rem;margin:.2rem 0 0">Verified by {{ po.invoiceVerifiedBy }}<br>{{ po.invoiceVerifiedAt }}</p>
+        {% endif %}
+        {% if po.paidAt %}
+        <p class="muted" style="font-size:.7rem;margin:.2rem 0 0">Paid {{ po.paidAt }}</p>
+        {% endif %}
+        {% if po.get('rejectionReason') %}
+        <p style="font-size:.7rem;margin:.2rem 0 0;color:#9b1c1c">⚠ {{ po.rejectionReason }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        {% if po.status == 'Invoice Received' and not po.invoiceVerified %}
+        {# Verify invoice #}
+        <form method="POST" action="{{ '#' }}" style="margin:0">
+          <button type="submit" class="primary-button" style="width:100%;font-size:.78rem;padding:.4rem .7rem;background:rgba(21,101,160,.9)">
+            ✅ Verify invoice
+          </button>
+        </form>
+        {# Reject invoice #}
+        <button onclick="showReject('{{ po.id }}')"
+          style="width:100%;font-size:.78rem;padding:.4rem .7rem;border-radius:10px;border:1px solid rgba(192,57,43,.3);background:rgba(192,57,43,.06);color:#9b1c1c;cursor:pointer">
+          ✗ Reject
+        </button>
+        <div id="reject-form-{{ po.id }}" style="display:none;margin-top:.3rem">
+          <form method="POST" action="{{ '#' }}" style="margin:0">
+            <textarea name="reason" rows="2" placeholder="Reason for rejection…"
+              style="width:100%;border:1px solid var(--line);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;resize:vertical;margin-bottom:.3rem"></textarea>
+            <button type="submit" style="width:100%;font-size:.76rem;padding:.35rem;border-radius:8px;border:1px solid rgba(192,57,43,.4);background:#9b1c1c;color:#fff;cursor:pointer">Confirm rejection</button>
+          </form>
+        </div>
+
+        {% elif po.status == 'Invoice Verified' or po.paymentStatus == 'Approved for payment' %}
+        {# Release payment #}
+        <form method="POST" action="{{ '#' }}" style="margin:0">
+          <button type="submit" class="primary-button" style="width:100%;font-size:.78rem;padding:.4rem .7rem">
+            💸 Release {{ zar(po.netPayable) }}
+          </button>
+        </form>
+        <p class="muted" style="font-size:.72rem;margin:.2rem 0 0;text-align:center">Pays supplier rate only</p>
+
+        {% elif po.paymentStatus == 'Paid' %}
+        <span style="font-size:.8rem;color:var(--accent-dark);font-weight:600">✅ Paid</span>
+        <p class="muted" style="font-size:.72rem">{{ zar(po.netPayable) }} released</p>
+
+        {% elif po.paymentStatus == 'Awaiting invoice' %}
+        <span style="font-size:.78rem;color:#7a5800">Waiting for supplier to upload invoice</span>
+
+        {% else %}
+        <span class="muted" style="font-size:.78rem">—</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- Payment rule callout -->
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.18)">
+    <div class="panel-head"><h2>Payment rule</h2></div>
+    <p style="font-size:.88rem;line-height:1.7;margin:0;color:var(--text)">
+      Suppliers are <strong>always paid their quoted rate</strong> — the <code>supplierRate</code> field on each PO —
+      not the shipper-facing price. The platform fee is the difference between <code>agreedRate</code> (what the shipper paid)
+      and <code>supplierRate</code> (what the supplier quoted). This means FreightFlow retains its fee regardless of
+      the shipper price negotiated. A payment can only be released after an invoice is uploaded <em>and</em> verified
+      by the Finance team.
+    </p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterPO(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.po-admin-row').forEach(r=>{
+    r.style.display = (val==='all'||r.dataset.status===val||
+      (val==='Invoice Received'&&r.querySelector('span')?.textContent?.includes('Invoice received'))
+    )?'':'none';
+  });
+}
+function showReject(id) {
+  const f = document.getElementById('reject-form-'+id);
+  if(f) f.style.display = f.style.display==='none'?'block':'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal</p>
+      <h1>Booking invoices</h1>
+      <p class="topbar-copy">Download a tax invoice for every completed booking. Invoices are generated automatically once delivery is confirmed.</p>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterInv('all',this)">All</button>
+    <button class="nav-chip" onclick="filterInv('Pending',this)">Pending payout</button>
+    <button class="nav-chip" onclick="filterInv('Paid',this)">Paid out</button>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="inv-list">
+      {% for b in completed_bookings %}
+      <div class="table-row inv-item" data-status="{{ b.payout_status or 'Pending' }}" style="flex-wrap:wrap;gap:.8rem">
+        <div style="flex:1;min-width:160px">
+          <strong>INV-{{ b.ref }}</strong>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">Booking: {{ b.ref }}</p>
+          <p style="font-size:.78rem;margin:.1rem 0 0;color:var(--muted)">{{ b.deliveredAt or b.createdAt }}</p>
+        </div>
+        <div style="flex:1;min-width:140px">
+          <p style="margin:0">{{ b.route }}</p>
+          <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ b.shipper }}</p>
+        </div>
+        <div style="text-align:right;min-width:140px">
+          <p style="margin:0;font-size:.85rem">Gross: <strong>{{ zar(b.value) }}</strong></p>
+          <p style="margin:.1rem 0;font-size:.82rem;color:#c0392b">Platform fee: - {{ zar((b.value * platform_fee_pct / 100)|int) }}</p>
+          <p style="margin:.1rem 0;font-weight:700;color:var(--green)">Net: {{ zar((b.value * (1 - platform_fee_pct/100))|int) }}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
+          <span class="pill {% if b.payout_status=='Paid' %}badge{% endif %}">{{ b.payout_status or 'Pending' }}</span>
+          <a href="{{ '#' }}" class="primary-button" style="padding:.45rem 1rem;font-size:.82rem;text-decoration:none">⬇ Download PDF</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-card" style="padding:2rem;text-align:center">
+        <p class="muted">No completed bookings yet. Invoices are generated after delivery confirmation.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterInv(status, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.inv-item').forEach(r => {
+    r.style.display = (status === 'all' || r.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

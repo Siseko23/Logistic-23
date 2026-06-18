@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal</p>
+      <h1>My complaints</h1>
+      <p class="topbar-copy">All complaints are first reviewed by our support team before the supplier is contacted. You will never need to approach a supplier or driver directly.</p>
+    </div>
+    <a href="{{ url_for('shipper.complaint_new') }}" class="primary-button" style="align-self:flex-start;white-space:nowrap">+ New complaint</a>
+  </div>
+
+  <div style="background:rgba(21,95,160,.07);border:1px solid rgba(21,95,160,.18);border-radius:18px;padding:1rem 1.2rem;display:flex;gap:.9rem;align-items:flex-start">
+    <span style="font-size:1.4rem">🛡️</span>
+    <div>
+      <strong>Admin-reviewed before supplier contact</strong>
+      <p class="muted" style="margin:.3rem 0 0;font-size:.88rem">Every complaint is reviewed by a FreightFlow admin before it reaches the supplier. The admin may add notes, request further information, or close the complaint without escalation if appropriate.</p>
+    </div>
+  </div>
+
+  <div class="table-like">
+    {% for c in complaints %}
+    <div class="table-row" style="flex-wrap:wrap;gap:.8rem">
+      <div style="flex:1;min-width:160px">
+        <strong>{{ c.ref }}</strong>
+        <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ c.category }}</p>
+        {% if c.booking %}<p style="font-size:.8rem;color:var(--accent);margin:.1rem 0 0">Booking: {{ c.booking.ref }}</p>{% endif %}
+      </div>
+      <div style="flex:2;min-width:200px">
+        <p style="margin:0;font-size:.9rem">{{ c.description[:90] }}{% if c.description|length > 90 %}…{% endif %}</p>
+        <p class="muted" style="font-size:.78rem;margin:.3rem 0 0">Submitted: {{ c.created_at.strftime('%d %b %Y, %H:%M') }}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.45rem">
+        <span style="font-size:.75rem;font-weight:700;padding:.28rem .75rem;border-radius:999px;background:{{ c.status_color }}18;color:{{ c.status_color }}">
+          {{ c.status }}
+        </span>
+        {% if c.priority == 'Critical' %}
+        <span style="font-size:.72rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.2rem .6rem;border-radius:999px">🔴 Critical</span>
+        {% elif c.priority == 'Urgent' %}
+        <span style="font-size:.72rem;background:rgba(122,88,0,.12);color:#7a5800;padding:.2rem .6rem;border-radius:999px">🟡 Urgent</span>
+        {% endif %}
+        <a href="{{ url_for('shipper.complaint_detail', ref=c.ref) }}" class="ghost-button" style="padding:.4rem .9rem;font-size:.82rem">View →</a>
+      </div>
+    </div>
+    {% else %}
+    <div style="padding:2.5rem;text-align:center">
+      <p style="font-size:1.6rem">✅</p>
+      <p class="muted">No complaints yet. If you experience a cargo issue, click "New complaint" above.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

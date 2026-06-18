@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+/* ── Layout ─────────────────────────────────────── */
+.ins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:1rem}
+.ins-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.ins-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:900px){.ins-grid-2,.ins-grid-3{grid-template-columns:1fr}}
+
+/* ── KPI cards ──────────────────────────────────── */
+.kpi{background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.1rem 1.3rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:18px 18px 0 0}
+.kpi.g::before{background:linear-gradient(90deg,#2f6c57,#4caf50)}
+.kpi.a::before{background:linear-gradient(90deg,#e8a000,#ffc107)}
+.kpi.r::before{background:linear-gradient(90deg,#c0392b,#e74c3c)}
+.kpi.b::before{background:linear-gradient(90deg,#1565a0,#2196f3)}
+.kpi.p::before{background:linear-gradient(90deg,#6a1b9a,#ab47bc)}
+.kpi-n{font-size:1.9rem;font-weight:800;line-height:1;margin:.35rem 0 .15rem;color:var(--accent-dark)}
+.kpi-l{font-size:.74rem;text-transform:uppercase;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.kpi-s{font-size:.78rem;color:var(--muted);margin:.25rem 0 0}
+.kpi-icon{position:absolute;right:1rem;top:50%;transform:translateY(-50%);font-size:2rem;opacity:.1}
+
+/* ── Alert strips ───────────────────────────────── */
+.alert{display:flex;align-items:flex-start;gap:.7rem;padding:.8rem 1rem;border-radius:12px;font-size:.83rem;margin-bottom:.5rem}
+.alert.r{background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.2)}
+.alert.a{background:rgba(232,160,0,.07);border:1px solid rgba(232,160,0,.25)}
+.alert.b{background:rgba(21,101,160,.07);border:1px solid rgba(21,101,160,.2)}
+
+/* ── League table ───────────────────────────────── */
+.lt-head{display:grid;grid-template-columns:2.2rem 1.6fr .7fr .7fr .7fr .75fr .75fr 1fr 1.1fr;gap:.5rem;
+  align-items:center;padding:.55rem 1rem;background:rgba(0,0,0,.035);
+  font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  border-radius:12px 12px 0 0}
+.lt-row{display:grid;grid-template-columns:2.2rem 1.6fr .7fr .7fr .7fr .75fr .75fr 1fr 1.1fr;gap:.5rem;
+  align-items:center;padding:.8rem 1rem;border-bottom:1px solid var(--line);font-size:.83rem;
+  transition:background .15s;cursor:pointer}
+.lt-row:last-child{border-bottom:none}
+.lt-row:hover{background:rgba(47,108,87,.04)}
+@media(max-width:1100px){
+  .lt-head,.lt-row{grid-template-columns:2.2rem 1.6fr .7fr .7fr .7fr 1.1fr}
+  .lt-hide{display:none}
+}
+
+/* ── Score bar ──────────────────────────────────── */
+.sb{background:rgba(0,0,0,.07);border-radius:999px;height:5px;overflow:hidden;min-width:48px}
+.sb-f{height:100%;border-radius:999px}
+
+/* ── Util gauge ─────────────────────────────────── */
+.gauge-ring{transform:rotate(-90deg);transform-origin:center}
+
+/* ── Drill panel ────────────────────────────────── */
+.drill{display:none;background:rgba(47,108,87,.025);border-bottom:2px solid rgba(47,108,87,.15);padding:1.2rem 1.4rem}
+.drill-tabs{display:flex;gap:.3rem;margin-bottom:1rem;flex-wrap:wrap}
+.dtab{padding:.4rem .9rem;border-radius:8px;font-size:.8rem;font-weight:600;border:1px solid var(--line);background:transparent;cursor:pointer;transition:all .15s}
+.dtab.active,.dtab:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dpane{display:none}.dpane.active{display:block}
+
+/* ── Benchmark chip ─────────────────────────────── */
+.bchip{font-size:.72rem;font-weight:700;padding:.15rem .45rem;border-radius:6px;margin-left:.3rem}
+.bchip.pos{background:rgba(47,108,87,.12);color:var(--accent-dark)}
+.bchip.neg{background:rgba(192,57,43,.1);color:#c0392b}
+.bchip.neu{background:rgba(0,0,0,.07);color:var(--muted)}
+
+/* ── Medals ─────────────────────────────────────── */
+.medal{width:1.7rem;height:1.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0}
+.medal.g{background:#ffd700;color:#7a5800}
+.medal.s{background:#c0c0c0;color:#555}
+.medal.b{background:#cd7f32;color:#fff}
+.medal.n{background:rgba(0,0,0,.08);color:var(--muted)}
+
+/* ── Quick action btns ──────────────────────────── */
+.qa{padding:.28rem .6rem;border-radius:7px;font-size:.74rem;font-weight:600;border:1px solid var(--line);background:transparent;cursor:pointer;transition:all .15s;text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+.qa:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qa.danger:hover{background:#c0392b;border-color:#c0392b;color:#fff}
+.qa.export{background:rgba(47,108,87,.08);border-color:rgba(47,108,87,.3);color:var(--accent-dark)}
+
+/* ── Note card ──────────────────────────────────── */
+.note-card{padding:.6rem .8rem;background:rgba(255,255,255,.8);border:1px solid var(--line);border-radius:10px;font-size:.82rem;margin-bottom:.5rem}
+.note-card .nc-meta{font-size:.72rem;color:var(--muted);margin:.2rem 0 0}
+
+/* ── Trend indicator ────────────────────────────── */
+.trend-up{color:var(--accent-dark);font-weight:700}
+.trend-dn{color:#c0392b;font-weight:700}
+.trend-fl{color:var(--muted);font-weight:700}
+
+/* ── Chart box ──────────────────────────────────── */
+.cbox{position:relative;width:100%}
+.cbox canvas{width:100%!important}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="stack page-space">
+
+{# ── HEADER ──────────────────────────────────────────────────────────── #}
+<div class="topbar">
+  <div>
+    <p class="eyebrow">Admin · Analytics</p>
+    <h1>Supplier Insights ✦</h1>
+    <p class="topbar-copy">Full command centre — performance, financials, fleet health, risk intelligence and audit trail across all {{ insights|length }} suppliers.</p>
+  </div>
+  <div style="align-self:flex-start;margin-top:.4rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+    {% if at_risk %}<span style="background:rgba(192,57,43,.1);color:#c0392b;font-size:.78rem;font-weight:700;padding:.3rem .7rem;border-radius:999px">⚠ {{ at_risk|length }} at risk</span>{% endif %}
+    {% if trending_down_count %}<span style="background:rgba(232,160,0,.15);color:#7a5800;font-size:.78rem;font-weight:700;padding:.3rem .7rem;border-radius:999px">📉 {{ trending_down_count }} trending down</span>{% endif %}
+    {% if doc_warnings %}<span style="background:rgba(21,101,160,.12);color:#1565a0;font-size:.78rem;font-weight:700;padding:.3rem .7rem;border-radius:999px">📄 {{ doc_warnings }} doc expiry</span>{% endif %}
+    <a href="{{ '#' }}" class="qa export">⬇ Export Excel</a>
+    <span style="font-size:.75rem;color:var(--muted)">09 Apr 2026 08:00</span>
+  </div>
+</div>
+
+{# ── KPI STRIP ───────────────────────────────────────────────────────── #}
+<div class="ins-grid">
+  <div class="kpi g">
+    <span class="kpi-icon">🏢</span>
+    <p class="kpi-l">Active suppliers</p>
+    <p class="kpi-n">{{ insights|selectattr('status','eq','Active')|list|length }}<span style="font-size:1rem;color:var(--muted)">/{{ insights|length }}</span></p>
+    <p class="kpi-s">{{ at_risk|length }} at risk &middot; {{ trending_down_count }} trending down</p>
+  </div>
+  <div class="kpi b">
+    <span class="kpi-icon">💰</span>
+    <p class="kpi-l">Platform revenue</p>
+    <p class="kpi-n" style="font-size:1.4rem">{{ zar(total_platform_revenue) }}</p>
+    <p class="kpi-s">{{ insights|sum(attribute='totalBookings') }} total bookings</p>
+  </div>
+  <div class="kpi g">
+    <span class="kpi-icon">💸</span>
+    <p class="kpi-l">Total paid out</p>
+    <p class="kpi-n" style="font-size:1.4rem">{{ zar(total_paid_out) }}</p>
+    <p class="kpi-s">{{ insights|selectattr('totalPaid','gt',0)|list|length }} suppliers paid</p>
+  </div>
+  {% set avg_score = (insights|sum(attribute='score') / insights|length)|round(1) %}
+  <div class="kpi {% if avg_score >= 4.0 %}g{% elif avg_score >= 3.0 %}a{% else %}r{% endif %}">
+    <span class="kpi-icon">⭐</span>
+    <p class="kpi-l">Avg score</p>
+    <p class="kpi-n">{{ avg_score }}</p>
+    <p class="kpi-s">Threshold: {{ min_score }} &middot; Platform avg: {{ bench.avgScore }}</p>
+  </div>
+  <div class="kpi {% if insights|sum(attribute='openReports') > 0 %}r{% else %}g{% endif %}">
+    <span class="kpi-icon">🚨</span>
+    <p class="kpi-l">Open disputes</p>
+    <p class="kpi-n">{{ insights|sum(attribute='openReports') }}</p>
+    <p class="kpi-s">Across {{ insights|selectattr('openReports','gt',0)|list|length }} suppliers</p>
+  </div>
+  <div class="kpi a">
+    <span class="kpi-icon">📋</span>
+    <p class="kpi-l">Invoices outstanding</p>
+    <p class="kpi-n">{{ insights|sum(attribute='posPending') }}</p>
+    <p class="kpi-s">POs awaiting supplier invoice upload</p>
+  </div>
+  {% set avg_accept = (insights|sum(attribute='acceptanceRate') / insights|length)|round(0)|int %}
+  <div class="kpi {% if avg_accept >= 85 %}g{% elif avg_accept >= 70 %}a{% else %}r{% endif %}">
+    <span class="kpi-icon">✅</span>
+    <p class="kpi-l">Avg acceptance rate</p>
+    <p class="kpi-n">{{ avg_accept }}%</p>
+    <p class="kpi-s">Platform avg: {{ bench.avgAcceptanceRate }}%</p>
+  </div>
+  <div class="kpi {% if doc_warnings > 0 %}b{% else %}g{% endif %}">
+    <span class="kpi-icon">📄</span>
+    <p class="kpi-l">Doc expiry warnings</p>
+    <p class="kpi-n">{{ doc_warnings }}</p>
+    <p class="kpi-s">Documents expiring within 60 days</p>
+  </div>
+</div>
+
+{# ── INTELLIGENCE ALERTS ─────────────────────────────────────────────── #}
+{% set all_alerts = [] %}
+{% for s in insights %}
+  {% if s.score < min_score %}{% set _ = all_alerts.append(('r', '🔴', s.name, 'Score ' ~ s.score ~ ' is BELOW the AI threshold (' ~ min_score ~ '). Excluded from auto-allocation.', s.id)) %}{% endif %}
+  {% if s.trendingDown %}{% set _ = all_alerts.append(('a', '📉', s.name, 'Trending down — ' ~ s.scoreHistory|selectattr('impact','lt',0)|list|length ~ ' negative score events. Intervention recommended.', s.id)) %}{% endif %}
+  {% for d in s.expiringDocs %}{% set _ = all_alerts.append(('b', '📄', s.name, d.name ~ ' expires in ' ~ d.daysLeft ~ ' days (' ~ d.expiry ~ '). Action required.', s.id)) %}{% endfor %}
+  {% if s.lastBookingDaysAgo >= 14 %}{% set _ = all_alerts.append(('a', '💤', s.name, 'No bookings in ' ~ s.lastBookingDaysAgo ~ ' days. Supplier may be inactive or unavailable.', s.id)) %}{% endif %}
+{% endfor %}
+{% if all_alerts %}
+<section class="panel" style="padding:.9rem 1.1rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+    <p style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#c0392b;margin:0">⚠ Intelligence alerts ({{ all_alerts|length }})</p>
+    <button onclick="toggleAlerts()" id="alert-toggle" style="font-size:.78rem;background:none;border:none;color:var(--accent);cursor:pointer;font-weight:600">Hide</button>
+  </div>
+  <div id="alert-body">
+    {% for cls, icon, name, msg, sid in all_alerts %}
+    <div class="alert {{ cls }}">
+      <span style="flex-shrink:0;font-size:1rem">{{ icon }}</span>
+      <div style="flex:1"><strong>{{ name }}</strong> — {{ msg }}</div>
+      <button onclick="toggleDrill('drill-{{ sid }}')" class="qa" style="flex-shrink:0;font-size:.74rem">Drill down</button>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── CHARTS ROW ──────────────────────────────────────────────────────── #}
+<div class="ins-grid-3">
+  <section class="panel">
+    <div class="panel-head" style="margin-bottom:.6rem"><h2>Performance scores</h2><p>vs {{ min_score }} threshold</p></div>
+    <div class="cbox" style="height:210px"><canvas id="scoreChart"></canvas></div>
+  </section>
+  <section class="panel">
+    <div class="panel-head" style="margin-bottom:.6rem"><h2>Revenue share</h2><p>Total platform bookings</p></div>
+    <div class="cbox" style="height:210px"><canvas id="revenueChart"></canvas></div>
+  </section>
+  <section class="panel">
+    <div class="panel-head" style="margin-bottom:.6rem"><h2>Acceptance rate</h2><p>vs on-time delivery %</p></div>
+    <div class="cbox" style="height:210px"><canvas id="acceptChart"></canvas></div>
+  </section>
+</div>
+
+{# ── MONTHLY TRENDS (line chart) ─────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-head" style="margin-bottom:.8rem">
+    <h2>Monthly booking trends</h2>
+    <p>6-month revenue trajectory per supplier</p>
+  </div>
+  <div style="display:flex;gap:.4rem;margin-bottom:.8rem;flex-wrap:wrap">
+    {% for s in insights %}
+    <button class="dtab active" id="mtab-{{ s.id }}" onclick="toggleMonthly('{{ s.id }}', this)">{{ s.name.split()[0] }}</button>
+    {% endfor %}
+  </div>
+  <div class="cbox" style="height:240px"><canvas id="monthlyChart"></canvas></div>
+</section>
+
+{# ── SCORE TRAJECTORY (line chart) ───────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-head" style="margin-bottom:.8rem">
+    <h2>Score trajectory</h2>
+    <p>6-week rolling score — direction matters as much as the number</p>
+  </div>
+  <div class="cbox" style="height:220px"><canvas id="trajectoryChart"></canvas></div>
+  <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem">
+    {% for s in insights %}
+    <div style="display:flex;align-items:center;gap:.3rem;font-size:.78rem">
+      <span style="width:12px;height:3px;border-radius:2px;display:inline-block;background:{{ loop.index0|string }}"></span>
+      {{ s.name.split()[0] }}
+      {% set last = s.trajectory[-1] if s.trajectory else s.score %}
+      {% set first = s.trajectory[0] if s.trajectory else s.score %}
+      {% if last > first %}<span class="trend-up">▲</span>
+      {% elif last < first %}<span class="trend-dn">▼</span>
+      {% else %}<span class="trend-fl">—</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── LEAGUE TABLE ────────────────────────────────────────────────────── #}
+<section class="panel" style="padding:0;overflow:hidden">
+  <div style="padding:1rem 1.2rem .8rem;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.6rem">
+    <div>
+      <h2 style="margin:0">Supplier league table</h2>
+      <p class="muted" style="font-size:.8rem;margin:.2rem 0 0">Ranked by score. Click any row to expand full drill-down.</p>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <input id="sup-search" placeholder="Search…" oninput="filterLeague(this.value)"
+        style="padding:.4rem .75rem;border:1px solid var(--line);border-radius:9px;font-size:.82rem;width:160px;background:rgba(255,255,255,.9)">
+      <select id="sort-select" onchange="sortLeague(this.value)"
+        style="padding:.4rem .75rem;border:1px solid var(--line);border-radius:9px;font-size:.82rem;background:rgba(255,255,255,.9)">
+        <option value="score">Sort: Score</option>
+        <option value="revenue">Sort: Revenue</option>
+        <option value="acceptance">Sort: Acceptance</option>
+        <option value="ontime">Sort: On-time</option>
+      </select>
+      <label style="font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;cursor:pointer">
+        <input type="checkbox" id="bulk-all" onchange="toggleBulkAll(this)"> Select all
+      </label>
+      <button onclick="bulkAction('flag')" class="qa danger" style="font-size:.74rem">🚩 Flag selected</button>
+      <button onclick="bulkAction('clear')" class="qa" style="font-size:.74rem">✅ Clear selected</button>
+    </div>
+  </div>
+
+  <div class="lt-head">
+    <span></span><span>Supplier</span><span>Score</span><span>On-time</span>
+    <span>Accept.</span><span class="lt-hide">Revenue</span>
+    <span class="lt-hide">Fleet util</span><span>Status</span><span>Actions</span>
+  </div>
+
+  <div id="league-body">
+  {% for s in insights %}
+  {% set rank = loop.index %}
+  <div class="lt-row sup-row" data-name="{{ s.name|lower }}" data-score="{{ s.score }}"
+    data-revenue="{{ s.totalRevenue }}" data-acceptance="{{ s.acceptanceRate }}" data-ontime="{{ s.onTimePct }}"
+    onclick="toggleDrill('drill-{{ s.id }}')">
+
+    <div style="display:flex;align-items:center;gap:.3rem">
+      <input type="checkbox" class="bulk-cb" data-id="{{ s.id }}" onclick="event.stopPropagation()" style="accent-color:var(--accent)">
+      {% if rank==1 %}<div class="medal g">1</div>
+      {% elif rank==2 %}<div class="medal s">2</div>
+      {% elif rank==3 %}<div class="medal b">3</div>
+      {% else %}<div class="medal n">{{ rank }}</div>{% endif %}
+    </div>
+
+    <div>
+      <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
+        <strong style="font-size:.87rem">{{ s.name }}</strong>
+        {% if s.openReports > 0 %}<span style="background:rgba(192,57,43,.1);color:#c0392b;font-size:.63rem;font-weight:700;padding:.1rem .38rem;border-radius:999px">{{ s.openReports }} dispute</span>{% endif %}
+        {% if s.trendingDown %}<span style="background:rgba(232,160,0,.15);color:#7a5800;font-size:.63rem;font-weight:700;padding:.1rem .38rem;border-radius:999px">📉 trending</span>{% endif %}
+        {% if s.expiringDocs %}<span style="background:rgba(21,101,160,.1);color:#1565a0;font-size:.63rem;font-weight:700;padding:.1rem .38rem;border-radius:999px">📄 doc expiry</span>{% endif %}
+      </div>
+      <p class="muted" style="font-size:.74rem;margin:.1rem 0 0">{{ s.baseCity }} &middot; {{ s.driverCount }} driver{{ 's' if s.driverCount != 1 }} &middot; last booking {% if s.lastBookingDaysAgo == 0 %}today{% elif s.lastBookingDaysAgo == 1 %}yesterday{% else %}{{ s.lastBookingDaysAgo }}d ago{% endif %}</p>
+      <!-- Score benchmarks -->
+      <div style="margin-top:.2rem">
+        <span class="bchip {{ 'pos' if s.scoreVsAvg >= 0 else 'neg' }}">{{ '+' if s.scoreVsAvg >= 0 else '' }}{{ s.scoreVsAvg }} vs avg</span>
+        <span class="bchip {{ 'pos' if s.acceptanceVsAvg >= 0 else 'neg' }}">accept {{ '+' if s.acceptanceVsAvg >= 0 else '' }}{{ s.acceptanceVsAvg }}%</span>
+      </div>
+    </div>
+
+    <div>
+      <span style="font-size:.97rem;font-weight:800;color:{% if s.score >= 4.5 %}var(--accent-dark){% elif s.score >= min_score %}#e8a000{% else %}#c0392b{% endif %}">{{ s.score }}</span>
+      <div class="sb" style="margin-top:.25rem"><div class="sb-f" style="width:{{ (s.score/5*100)|int }}%;background:{% if s.score >= 4.5 %}var(--accent){% elif s.score >= min_score %}#e8a000{% else %}#c0392b{% endif %}"></div></div>
+      <!-- Score trajectory mini -->
+      {% if s.trajectory %}
+      {% set tstart = s.trajectory[0] %} {% set tend = s.trajectory[-1] %}
+      <span style="font-size:.68rem;{% if tend > tstart %}color:var(--accent-dark){% elif tend < tstart %}color:#c0392b{% else %}color:var(--muted){% endif %}">
+        {% if tend > tstart %}▲{% elif tend < tstart %}▼{% else %}—{% endif %} {{ tstart }}→{{ tend }}
+      </span>
+      {% endif %}
+    </div>
+
+    <div style="text-align:center">
+      <strong style="color:{% if s.onTimePct >= 90 %}var(--accent-dark){% elif s.onTimePct >= 75 %}#e8a000{% else %}#c0392b{% endif %}">{{ s.onTimePct }}%</strong>
+      <p class="muted" style="font-size:.7rem;margin:.1rem 0 0">
+        <span class="bchip {{ 'pos' if s.onTimeVsAvg >= 0 else 'neg' }}" style="margin:0">{{ '+' if s.onTimeVsAvg >= 0 else '' }}{{ s.onTimeVsAvg }}%</span>
+      </p>
+    </div>
+
+    <div style="text-align:center">
+      <strong style="color:{% if s.acceptanceRate >= 85 %}var(--accent-dark){% elif s.acceptanceRate >= 70 %}#e8a000{% else %}#c0392b{% endif %}">{{ s.acceptanceRate }}%</strong>
+      <p class="muted" style="font-size:.7rem;margin:.05rem 0 0">{{ s.rejectionRate }}% rejected</p>
+    </div>
+
+    <div class="lt-hide">
+      <strong style="font-size:.83rem">{{ zar(s.totalRevenue) }}</strong>
+      <p class="muted" style="font-size:.7rem;margin:.1rem 0 0">avg {{ zar(s.avgBookingValue) }}/bkg</p>
+    </div>
+
+    <div class="lt-hide" style="text-align:center">
+      <!-- SVG utilisation gauge ring -->
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="17" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="4"/>
+        <circle cx="22" cy="22" r="17" fill="none"
+          stroke="{% if s.fleetUtilPct >= 70 %}#2f6c57{% elif s.fleetUtilPct >= 40 %}#e8a000{% else %}#c0392b{% endif %}"
+          stroke-width="4" stroke-dasharray="{{ (s.fleetUtilPct / 100 * 106.8)|round(1) }} 106.8"
+          stroke-linecap="round" class="gauge-ring"/>
+        <text x="22" y="26" text-anchor="middle" font-size="9" font-weight="700"
+          fill="{% if s.fleetUtilPct >= 70 %}#2f6c57{% elif s.fleetUtilPct >= 40 %}#e8a000{% else %}#c0392b{% endif %}">{{ s.fleetUtilPct }}%</text>
+      </svg>
+      <p class="muted" style="font-size:.68rem;margin:0">fleet util</p>
+    </div>
+
+    <div>
+      <span style="font-size:.74rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;
+        {% if s.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+        {% elif s.status=='At Risk' or s.status=='Flagged' %}background:rgba(192,57,43,.1);color:#c0392b
+        {% else %}background:rgba(0,0,0,.07);color:var(--muted){% endif %}">{{ s.status }}</span>
+      <p class="muted" style="font-size:.68rem;margin:.2rem 0 0">invoice {{ s.avgInvoiceDays }}d avg</p>
+    </div>
+
+    <div style="display:flex;gap:.28rem;flex-wrap:wrap" onclick="event.stopPropagation()">
+      <a href="{{ url_for('admin.supplier_risk') }}" class="qa" title="Scores">📊</a>
+      <a href="{{ url_for('admin.executive_reports') }}" class="qa" title="Payouts">💸</a>
+      {% if s.status in ('Active','At Risk') %}
+      <form method="POST" action="{{ '#' }}" style="margin:0">
+        <button type="submit" class="qa danger" title="Flag">🚩</button>
+      </form>
+      {% else %}
+      <form method="POST" action="{{ '#' }}" style="margin:0">
+        <button type="submit" class="qa" title="Clear flag">✅</button>
+      </form>
+      {% endif %}
+      <button class="qa" onclick="toggleDrill('drill-{{ s.id }}',event)" title="Expand">⬇</button>
+    </div>
+  </div>
+
+  {# ── DRILL-DOWN PANEL ─────────────────────────────────────────────── #}
+  <div id="drill-{{ s.id }}" class="drill">
+    <div class="drill-tabs">
+      <button class="dtab active" onclick="switchTab('{{ s.id }}','overview',this)">Overview</button>
+      <button class="dtab" onclick="switchTab('{{ s.id }}','financial',this)">Financials</button>
+      <button class="dtab" onclick="switchTab('{{ s.id }}','drivers',this)">Drivers</button>
+      <button class="dtab" onclick="switchTab('{{ s.id }}','docs',this)">Documents</button>
+      <button class="dtab" onclick="switchTab('{{ s.id }}','notes',this)">Notes {% if s.notes %}<span style="background:var(--accent);color:#fff;border-radius:999px;font-size:.65rem;padding:.1rem .35rem;margin-left:.2rem">{{ s.notes|length }}</span>{% endif %}</button>
+    </div>
+
+    {# Overview tab #}
+    <div id="tab-{{ s.id }}-overview" class="dpane active">
+      <div class="ins-grid-3" style="gap:.8rem">
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">KPI benchmarks vs platform avg</p>
+          {% for label, val, avg, unit in [
+            ('Score', s.score, bench.avgScore, ''),
+            ('On-time rate', s.onTimePct, bench.avgOnTimePct, '%'),
+            ('Acceptance rate', s.acceptanceRate, bench.avgAcceptanceRate, '%'),
+            ('Avg booking value', s.avgBookingValue, bench.avgBookingValue, 'R'),
+            ('Invoice turnaround', s.avgInvoiceDays, bench.avgInvoiceDays, 'd'),
+            ('Fleet utilisation', s.fleetUtilPct, bench.avgFleetUtil, '%'),
+          ] %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.8rem">
+            <span class="muted">{{ label }}</span>
+            <div style="display:flex;align-items:center;gap:.4rem">
+              <strong>{% if unit == 'R' %}R {{ val|int|string }}{% else %}{{ val }}{{ unit }}{% endif %}</strong>
+              {% set diff = val - avg %}
+              <span class="bchip {{ 'pos' if diff >= 0 else 'neg' }}">
+                {% if unit == 'R' %}{{ '+R' if diff >= 0 else '-R' }}{{ diff|abs|int }}{% else %}{{ '+' if diff >= 0 else '' }}{{ diff|round(1) }}{{ unit }}{% endif %}
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">Recent score events</p>
+          {% for e in s.scoreHistory %}
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:.8rem">
+            <div><span>{{ e.event }}</span><span class="muted" style="font-size:.72rem;margin-left:.4rem">{{ e.date }}</span></div>
+            <span style="font-weight:700;color:{% if e.impact > 0 %}var(--accent-dark){% elif e.impact < 0 %}#c0392b{% else %}var(--muted){% endif %}">
+              {% if e.impact > 0 %}+{% endif %}{{ e.impact }}
+            </span>
+          </div>
+          {% else %}<p class="muted" style="font-size:.82rem">No events recorded.</p>{% endfor %}
+        </div>
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">Monthly trend (bookings)</p>
+          <div class="cbox" style="height:130px"><canvas id="mini-{{ s.id }}"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    {# Financials tab #}
+    <div id="tab-{{ s.id }}-financial" class="dpane">
+      <div class="ins-grid-3" style="gap:.8rem">
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">Earnings summary</p>
+          {% set bk = s.banking %}
+          <div style="padding:.7rem .9rem;background:rgba(47,108,87,.05);border-radius:12px;font-size:.83rem;line-height:1.9;margin-bottom:.6rem">
+            <div style="display:flex;justify-content:space-between"><span class="muted">Total revenue</span><strong>{{ zar(s.totalRevenue) }}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span class="muted">Platform fee (10%)</span><strong style="color:#c0392b">− {{ zar((s.totalRevenue * 0.1)|int) }}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span class="muted">Net earned</span><strong>{{ zar((s.totalRevenue * 0.9)|int) }}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span class="muted">Total paid out</span><strong style="color:var(--accent-dark)">{{ zar(s.totalPaid) }}</strong></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:.3rem;padding-top:.3rem"><span class="muted">Outstanding</span><strong style="color:{% if (s.totalRevenue * 0.9 - s.totalPaid)|int > 0 %}#c0392b{% else %}var(--accent-dark){% endif %}">{{ zar(((s.totalRevenue * 0.9)|int - s.totalPaid)|int) }}</strong></div>
+          </div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:.7rem 0 .4rem">Banking details</p>
+          {% if bk.bank %}
+          <div style="font-size:.82rem;line-height:1.8;padding:.6rem .8rem;background:rgba(0,0,0,.03);border-radius:10px">
+            <div><strong>{{ bk.accountHolder }}</strong></div>
+            <div class="muted">{{ bk.bank }} &middot; {{ bk.accountType }}</div>
+            <div class="muted">Branch: {{ bk.branchCode }} &middot; Acc: ···{{ bk.accountNumber[-4:] if bk.accountNumber else 'N/A' }}</div>
+          </div>
+          {% else %}<p style="color:#c0392b;font-size:.83rem">⚠ No banking details on file.</p>{% endif %}
+        </div>
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">Invoice performance</p>
+          <div style="padding:.7rem .9rem;background:rgba(0,0,0,.03);border-radius:12px;font-size:.83rem;line-height:1.9">
+            <div style="display:flex;justify-content:space-between"><span class="muted">Avg invoice turnaround</span><strong style="color:{% if s.avgInvoiceDays <= 3 %}var(--accent-dark){% elif s.avgInvoiceDays <= 7 %}#e8a000{% else %}#c0392b{% endif %}">{{ s.avgInvoiceDays }} days</strong></div>
+            <div style="display:flex;justify-content:space-between"><span class="muted">Platform average</span><strong>{{ bench.avgInvoiceDays }} days</strong></div>
+            <div style="display:flex;justify-content:space-between"><span class="muted">POs pending invoice</span><strong style="color:{% if s.posPending > 0 %}#c0392b{% else %}var(--accent-dark){% endif %}">{{ s.posPending }}</strong></div>
+          </div>
+        </div>
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem">Revenue by month</p>
+          <div class="cbox" style="height:150px"><canvas id="rev-{{ s.id }}"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    {# Drivers tab #}
+    <div id="tab-{{ s.id }}-drivers" class="dpane">
+      {% if s.drivers %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem">
+        {% for d in s.drivers %}
+        <div style="padding:.8rem 1rem;border:1px solid var(--line);border-radius:14px;font-size:.82rem">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <strong>{{ d.name }}</strong>
+              <p class="muted" style="margin:.15rem 0 0;font-size:.76rem">{{ d.licenseType }} &middot; {{ d.vehicleType }}</p>
+            </div>
+            <span style="font-size:.72rem;font-weight:700;padding:.18rem .5rem;border-radius:999px;
+              {% if d.status=='Active' %}background:rgba(47,108,87,.1);color:var(--accent-dark)
+              {% else %}background:rgba(192,57,43,.1);color:#c0392b{% endif %}">{{ d.status }}</span>
+          </div>
+          <div style="margin-top:.6rem;display:grid;grid-template-columns:1fr 1fr;gap:.3rem;font-size:.78rem">
+            <div><span class="muted">Rating</span><br><strong>{{ d.rating }}★</strong></div>
+            <div><span class="muted">Deliveries</span><br><strong>{{ d.totalDeliveries }}</strong></div>
+            <div><span class="muted">On-time</span><br><strong>{{ d.onTimeRate }}%</strong></div>
+            <div><span class="muted">License exp.</span><br>
+              <strong style="{% if d.licenseExpiry < '2026-12-31' %}color:#c0392b{% endif %}">{{ d.licenseExpiry }}</strong>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}<p class="muted" style="font-size:.85rem">No drivers registered under this supplier.</p>{% endif %}
+    </div>
+
+    {# Documents tab #}
+    <div id="tab-{{ s.id }}-docs" class="dpane">
+      {% set sdocs = [] %}
+      {% for d in [] %}{% endfor %}{# placeholder — real docs filtered below #}
+      <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .6rem">Compliance documents</p>
+      {% if s.expiringDocs %}
+      <div style="margin-bottom:.8rem">
+        {% for d in s.expiringDocs %}
+        <div class="alert b" style="margin-bottom:.4rem">
+          📄 <strong>{{ d.name }}</strong> expires in <strong style="color:#c0392b">{{ d.daysLeft }} days</strong> ({{ d.expiry }})
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="background:rgba(47,108,87,.06);padding:.6rem .9rem;border-radius:10px;font-size:.83rem;color:var(--accent-dark);margin-bottom:.8rem">
+        ✅ No documents expiring within 60 days.
+      </div>
+      {% endif %}
+      <a href="{{ url_for('admin.users') }}" class="qa" style="font-size:.82rem">View all documents →</a>
+    </div>
+
+    {# Notes/audit log tab #}
+    <div id="tab-{{ s.id }}-notes" class="dpane">
+      <div class="ins-grid-2" style="gap:1rem">
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .6rem">Audit trail ({{ s.notes|length }} notes)</p>
+          {% for n in s.notes|reverse %}
+          <div class="note-card">
+            <p style="margin:0">{{ n.text }}</p>
+            <p class="nc-meta">{{ n.author }} &middot; {{ n.date }}</p>
+          </div>
+          {% else %}
+          <p class="muted" style="font-size:.83rem">No notes recorded yet.</p>
+          {% endfor %}
+        </div>
+        <div>
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin:0 0 .6rem">Add note</p>
+          <form method="POST" action="{{ '#' }}">
+            <textarea name="note_text" rows="4" required placeholder="Internal note — visible to admins only. Include context, decisions, or follow-up actions."
+              style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:.65rem .85rem;font-size:.85rem;background:rgba(255,255,255,.9);line-height:1.5;margin-bottom:.5rem"></textarea>
+            <button type="submit" class="primary-button" style="width:100%;padding:.55rem">Save note →</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>{# end drill #}
+  {% endfor %}
+  </div>{# end league-body #}
+</section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Data from Jinja ───────────────────────────────────────────────────────
+const supData = [
+  {% for s in insights %}
+  {
+    id: "{{ s.id }}",
+    name: "{{ s.name }}",
+    shortName: "{{ s.name.split()[0] }}",
+    score: {{ s.score }},
+    revenue: {{ s.totalRevenue }},
+    onTime: {{ s.onTimePct }},
+    acceptance: {{ s.acceptanceRate }},
+    trajectory: {{ s.trajectory | tojson }},
+    monthly: {{ s.monthly | tojson }},
+  },
+  {% endfor %}
+];
+const minScore = {{ min_score }};
+const palette = ['#2f6c57','#e8a000','#1565a0','#c0392b','#6a1b9a'];
+const months = supData[0]?.monthly.map(m => m.month) || [];
+
+// ── Score bar chart ────────────────────────────────────────────────────────
+new Chart(document.getElementById('scoreChart'), {
+  type:'bar',
+  data:{
+    labels: supData.map(s => s.shortName),
+    datasets:[{
+      data: supData.map(s => s.score),
+      backgroundColor: supData.map(s => s.score>=4.5?'rgba(47,108,87,.8)':s.score>=minScore?'rgba(232,160,0,.8)':'rgba(192,57,43,.8)'),
+      borderRadius:6, borderSkipped:false
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`Score: ${c.raw}`}}},
+    scales:{
+      y:{min:0,max:5,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}},
+      x:{grid:{display:false},ticks:{font:{size:10}}}
+    },
+    animation:{duration:700,easing:'easeOutQuart'}
+  }
+});
+
+// ── Revenue donut ──────────────────────────────────────────────────────────
+new Chart(document.getElementById('revenueChart'), {
+  type:'doughnut',
+  data:{
+    labels: supData.map(s=>s.name),
+    datasets:[{data:supData.map(s=>s.revenue),backgroundColor:palette,borderWidth:2,borderColor:'#fff',hoverOffset:8}]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false, cutout:'60%',
+    plugins:{
+      legend:{position:'bottom',labels:{font:{size:9},boxWidth:9,padding:6}},
+      tooltip:{callbacks:{label:c=>` R ${c.raw.toLocaleString()}`}}
+    },
+    animation:{duration:800,easing:'easeOutBack'}
+  }
+});
+
+// ── Acceptance vs On-time scatter / grouped bar ────────────────────────────
+new Chart(document.getElementById('acceptChart'), {
+  type:'bar',
+  data:{
+    labels: supData.map(s=>s.shortName),
+    datasets:[
+      {label:'Acceptance %', data:supData.map(s=>s.acceptance), backgroundColor:'rgba(47,108,87,.75)', borderRadius:4, borderSkipped:false},
+      {label:'On-time %',    data:supData.map(s=>s.onTime),     backgroundColor:'rgba(21,101,160,.6)',  borderRadius:4, borderSkipped:false},
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:9,padding:5}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw}%`}}},
+    scales:{
+      y:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9},callback:v=>v+'%'}},
+      x:{grid:{display:false},ticks:{font:{size:9}}}
+    },
+    animation:{duration:700}
+  }
+});
+
+// ── Monthly trends line chart ──────────────────────────────────────────────
+let activeSups = new Set(supData.map(s=>s.id));
+let monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+  type:'line',
+  data:{
+    labels: months,
+    datasets: supData.map((s,i)=>({
+      label: s.name,
+      data: s.monthly.map(m=>m.revenue),
+      borderColor: palette[i],
+      backgroundColor: palette[i]+'22',
+      tension:.35, fill:false,
+      borderWidth:2, pointRadius:4, pointHoverRadius:6
+    }))
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:9,padding:6}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: R ${c.raw.toLocaleString()}`}}},
+    scales:{
+      y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9},callback:v=>'R'+Math.round(v/1000)+'k'}},
+      x:{grid:{display:false},ticks:{font:{size:10}}}
+    },
+    animation:{duration:700}
+  }
+});
+
+function toggleMonthly(id, btn) {
+  if(activeSups.has(id)) activeSups.delete(id); else activeSups.add(id);
+  btn.classList.toggle('active');
+  monthlyChart.data.datasets.forEach((ds,i)=>{
+    ds.hidden = !activeSups.has(supData[i].id);
+  });
+  monthlyChart.update();
+}
+
+// ── Score trajectory ───────────────────────────────────────────────────────
+const weekLabels = ['W1','W2','W3','W4','W5','W6'];
+new Chart(document.getElementById('trajectoryChart'), {
+  type:'line',
+  data:{
+    labels: weekLabels,
+    datasets: supData.map((s,i)=>({
+      label: s.name,
+      data: s.trajectory,
+      borderColor: palette[i],
+      tension:.3, fill:false,
+      borderWidth:2.5, pointRadius:3,
+      borderDash: s.trajectory[s.trajectory.length-1] < s.trajectory[0] ? [4,2] : []
+    }))
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw}`}}},
+    scales:{
+      y:{min:1,max:5,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9}},
+        title:{display:true,text:'Score',font:{size:9}}},
+      x:{grid:{display:false},ticks:{font:{size:10}}}
+    },
+    annotation:{annotations:{thresh:{type:'line',yMin:minScore,yMax:minScore,borderColor:'#c0392b',borderWidth:1,borderDash:[5,3]}}},
+    animation:{duration:900,easing:'easeInOutQuart'}
+  }
+});
+
+// ── Mini charts per supplier (rendered lazily on drill open) ───────────────
+const miniRendered = {};
+function renderMiniCharts(sid) {
+  if(miniRendered[sid]) return;
+  miniRendered[sid] = true;
+  const s = supData.find(x=>x.id===sid);
+  if(!s) return;
+  const mc = document.getElementById('mini-'+sid);
+  const rc = document.getElementById('rev-'+sid);
+  if(mc) new Chart(mc,{type:'bar',data:{labels:s.monthly.map(m=>m.month),datasets:[{data:s.monthly.map(m=>m.bookings),backgroundColor:'rgba(47,108,87,.6)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{display:false},ticks:{font:{size:8}}},x:{grid:{display:false},ticks:{font:{size:8}}}},animation:{duration:500}}});
+  if(rc) new Chart(rc,{type:'line',data:{labels:s.monthly.map(m=>m.month),datasets:[{data:s.monthly.map(m=>m.revenue),borderColor:'#1565a0',backgroundColor:'rgba(21,101,160,.1)',tension:.35,fill:true,borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:8},callback:v=>'R'+Math.round(v/1000)+'k'}},x:{grid:{display:false},ticks:{font:{size:8}}}},animation:{duration:500}}});
+}
+
+// ── Drill-down toggle ──────────────────────────────────────────────────────
+function toggleDrill(id, e) {
+  if(e) e.stopPropagation();
+  const el = document.getElementById(id);
+  if(!el) return;
+  const opening = el.style.display==='none'||!el.style.display;
+  el.style.display = opening ? 'block' : 'none';
+  if(opening) {
+    renderMiniCharts(id.replace('drill-',''));
+    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  }
+}
+
+// ── Drill tab switch ───────────────────────────────────────────────────────
+function switchTab(sid, tab, btn) {
+  document.querySelectorAll(`#drill-${sid} .dpane`).forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll(`#drill-${sid} .dtab`).forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${sid}-${tab}`)?.classList.add('active');
+  btn.classList.add('active');
+  if(tab==='financial'||tab==='overview') renderMiniCharts(sid);
+}
+
+// ── Alert toggle ───────────────────────────────────────────────────────────
+function toggleAlerts() {
+  const b = document.getElementById('alert-body');
+  const t = document.getElementById('alert-toggle');
+  const hiding = b.style.display!=='none';
+  b.style.display = hiding ? 'none' : '';
+  t.textContent = hiding ? 'Show' : 'Hide';
+}
+
+// ── League search ──────────────────────────────────────────────────────────
+function filterLeague(val) {
+  document.querySelectorAll('.sup-row').forEach(r=>{
+    r.style.display = r.dataset.name.includes(val.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── League sort ────────────────────────────────────────────────────────────
+function sortLeague(key) {
+  const body = document.getElementById('league-body');
+  const rows = [...body.querySelectorAll('.lt-row')];
+  rows.sort((a,b)=>parseFloat(b.dataset[key])-parseFloat(a.dataset[key]));
+  rows.forEach(r=>{
+    const drill = document.getElementById('drill-'+r.querySelector('[id^="drill-"]')?.id?.split('-')?.slice(1)?.join('-'));
+    body.appendChild(r);
+    if(drill) body.appendChild(drill);
+  });
+}
+
+// ── Bulk actions ───────────────────────────────────────────────────────────
+function toggleBulkAll(cb) {
+  document.querySelectorAll('.bulk-cb').forEach(c=>c.checked=cb.checked);
+}
+function bulkAction(action) {
+  const selected = [...document.querySelectorAll('.bulk-cb:checked')].map(c=>c.dataset.id);
+  if(!selected.length){alert('Select at least one supplier.');return;}
+  if(!confirm(`${action==='flag'?'Flag':'Clear flag on'} ${selected.length} supplier(s)?`)) return;
+  selected.forEach(id=>{
+    const form = document.createElement('form');
+    form.method='POST';
+    form.action=`/admin/supplier-insights/${id}/${action==='flag'?'flag':'clear-flag'}`;
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+</script>
+{% endblock %}

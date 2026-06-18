@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .dispatch-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:1.4rem}
+  .dispatch-card.active{border-left:4px solid var(--accent)}
+  .driver-option{display:flex;align-items:center;gap:.8rem;padding:.7rem;border:2px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .2s}
+  .driver-option:hover,.driver-option.selected{border-color:var(--accent);background:rgba(21,95,160,.04)}
+  .driver-option input[type=radio]{accent-color:var(--accent)}
+  .driver-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+  .status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:.3rem}
+  .dot-active{background:#27ae60}
+  .dot-busy{background:#e67e22}
+  .vehicle-option{display:flex;align-items:center;gap:.7rem;padding:.6rem;border:2px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .2s}
+  .vehicle-option:hover,.vehicle-option.selected{border-color:var(--accent)}
+  .confirm-strip{background:linear-gradient(135deg,rgba(21,95,160,.09),rgba(21,95,160,.03));border:1px solid rgba(21,95,160,.15);border-radius:14px;padding:1rem 1.2rem;margin-top:.8rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Operations</p>
+      <h1>🚛 Dispatch Centre</h1>
+      <p class="topbar-copy">Assign drivers and vehicles to confirmed bookings. Manage your active fleet in real time.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('supplier.fleet') }}" class="ghost-button">Fleet overview</a>
+      <a href="{{ url_for('supplier.bookings') }}" class="primary-button">📍 Live tracking</a>
+    </div>
+  </div>
+
+  <!-- Fleet status strip -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    <div class="stat-card">
+      <p class="stat-label">Pending jobs</p>
+      <strong>{{ pending_jobs | length }}</strong>
+      <p class="small-note">Awaiting dispatch</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Available drivers</p>
+      <strong style="color:#27ae60">{{ available_drivers | length }}</strong>
+      <p class="small-note">Ready to assign</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Available vehicles</p>
+      <strong style="color:#27ae60">{{ available_fleet | length }}</strong>
+      <p class="small-note">Ready to deploy</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Fleet utilisation</p>
+      <strong style="color:var(--accent-dark)">75%</strong>
+      <p class="small-note">3 of 4 vehicles active</p>
+    </div>
+  </div>
+
+  <!-- Jobs awaiting dispatch -->
+  <div>
+    <h2 style="margin-bottom:1rem">Jobs awaiting dispatch</h2>
+    {% if not pending_jobs %}
+    <div class="stat-card" style="text-align:center;padding:2rem">
+      <p style="color:var(--muted)">No jobs pending dispatch right now.</p>
+    </div>
+    {% endif %}
+    {% for job in pending_jobs %}
+    <div class="dispatch-card active" style="margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+        <div>
+          <p class="eyebrow" style="margin-bottom:.1rem">{{ job.ref }}</p>
+          <h3 style="margin:0 0 .2rem">{{ job.route }}</h3>
+          <p class="small-note">{{ job.shipper }} · Collection: {{ job.createdAt[:10] }} · Value: {{ zar(job.value) }}</p>
+        </div>
+        <span style="background:rgba(21,95,160,.1);color:var(--accent-dark);padding:.3rem .9rem;border-radius:999px;font-weight:600;font-size:.85rem">{{ job.status }}</span>
+      </div>
+      <form action="{{ url_for('supplier.dispatch_assign', ref=job.ref) }}" method="POST">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <!-- Driver selection -->
+          <div>
+            <p class="eyebrow" style="margin-bottom:.5rem">Select driver</p>
+            {% for driver in available_drivers %}
+            <label style="display:block;margin-bottom:.4rem">
+              <div class="driver-option">
+                <input type="radio" name="driver_id" value="{{ driver.id }}" {% if loop.first %}checked{% endif %}>
+                <div class="driver-avatar">{{ driver.name[0] }}</div>
+                <div>
+                  <strong style="font-size:.9rem">{{ driver.name }}</strong>
+                  <p class="small-note" style="margin:0">{{ driver.licenseType }} · <span class="status-dot dot-active"></span>Available</p>
+                </div>
+                <span style="margin-left:auto;color:#27ae60;font-size:.8rem">⭐ {{ driver.rating }}</span>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+          <!-- Vehicle selection -->
+          <div>
+            <p class="eyebrow" style="margin-bottom:.5rem">Select vehicle</p>
+            {% for v in available_fleet %}
+            <label style="display:block;margin-bottom:.4rem">
+              <div class="vehicle-option">
+                <input type="radio" name="vehicle_id" value="{{ v.id }}" {% if loop.first %}checked{% endif %}>
+                <div>
+                  <strong style="font-size:.9rem">{{ v.type }}</strong>
+                  <p class="small-note" style="margin:0">{{ v.reg }} · {{ v.payload }} · {{ v.cbm }}</p>
+                </div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="confirm-strip">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <div>
+              <p class="small-note" style="margin:0">Dispatching <strong>{{ job.ref }}</strong> → driver and vehicle will be locked in.</p>
+            </div>
+            <button type="submit" class="primary-button">✅ Confirm dispatch</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Active jobs -->
+  <div>
+    <h2 style="margin-bottom:1rem">Active dispatched jobs</h2>
+    <div class="stat-card" style="padding:0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+        <thead>
+          <tr style="border-bottom:2px solid var(--line)">
+            <th style="text-align:left;padding:.8rem 1.2rem;color:var(--muted);font-weight:600">Booking</th>
+            <th style="text-align:left;padding:.8rem;color:var(--muted);font-weight:600">Route</th>
+            <th style="text-align:left;padding:.8rem;color:var(--muted);font-weight:600">Driver</th>
+            <th style="text-align:left;padding:.8rem;color:var(--muted);font-weight:600">Vehicle</th>
+            <th style="text-align:left;padding:.8rem;color:var(--muted);font-weight:600">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in pending_jobs %}
+          <tr style="border-bottom:1px solid var(--line)">
+            <td style="padding:.75rem 1.2rem"><strong>{{ job.ref }}</strong></td>
+            <td style="padding:.75rem .8rem;color:var(--muted)">{{ job.route }}</td>
+            <td style="padding:.75rem .8rem">{{ job.driverName or '—' }}</td>
+            <td style="padding:.75rem .8rem">{{ job.vehicleReg or '—' }}</td>
+            <td style="padding:.75rem .8rem"><span style="background:#d5f5e3;color:#1e8449;padding:.2rem .7rem;border-radius:999px;font-size:.8rem;font-weight:600">{{ job.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

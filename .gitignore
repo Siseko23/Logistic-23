@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment secrets — never commit real values
+.env
+
+# Render will create its own DB on first boot via build.sh
+# Comment out the line below if you want to ship the pre-seeded DB instead
+# freightflow.db
+
+# Uploads / evidence files (user-generated content)
+app/static/complaint_evidence/
+
+# OS noise
+.DS_Store
+Thumbs.db

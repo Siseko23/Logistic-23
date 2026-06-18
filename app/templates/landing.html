@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+
+  <!-- Hero -->
+  <section style="display:grid;grid-template-columns:1.15fr .85fr;gap:0;border-radius:20px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg)">
+    <div style="padding:2.5rem 2.8rem">
+      <p class="eyebrow" style="margin-bottom:.7rem">Neutral logistics marketplace</p>
+      <h2 style="margin:0 0 1rem;font-family:'IBM Plex Serif',Georgia,serif;font-size:clamp(2rem,4vw,3.4rem);max-width:13ch;line-height:1.13;letter-spacing:-.4px;font-weight:600">Move freight smarter, not harder.</h2>
+      <p style="max-width:52ch;color:var(--text-2);line-height:1.65;margin:0 0 1.5rem;font-size:.925rem">FreightFlow Nexus connects shippers, suppliers, and administrators in one platform — with automated pricing, AI-driven vehicle matching, and real-time tracking built in.</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <a href="{{ url_for('auth.login') }}" class="primary-button">Log in by role</a>
+        <a href="{{ '#' }}" class="ghost-button">Join as supplier →</a>
+      </div>
+      <div style="display:flex;gap:2rem;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+        <div><strong style="font-size:1.35rem;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums">&lt; 5s</strong><p style="margin:.2rem 0 0;font-size:.75rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;font-weight:600">Rate matching</p></div>
+        <div><strong style="font-size:1.35rem;font-weight:700;letter-spacing:-.5px">99.5%</strong><p style="margin:.2rem 0 0;font-size:.75rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;font-weight:600">Uptime target</p></div>
+        <div><strong style="font-size:1.35rem;font-weight:700;letter-spacing:-.5px">5 000+</strong><p style="margin:.2rem 0 0;font-size:.75rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;font-weight:600">Concurrent users</p></div>
+        <div><strong style="font-size:1.35rem;font-weight:700;letter-spacing:-.5px">POPIA</strong><p style="margin:.2rem 0 0;font-size:.75rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;font-weight:600">Compliant</p></div>
+      </div>
+    </div>
+    <!-- Hero illustration: a stylised route map showing origin → transit → destination -->
+    <div style="background:linear-gradient(140deg,#0f3a72 0%,#1a6fd4 50%,#3b9eff 100%);display:flex;align-items:center;justify-content:center;padding:2rem;min-height:300px">
+      <svg viewBox="0 0 340 240" width="100%" style="max-width:300px">
+        <!-- Road / route line -->
+        <path d="M40 190 C100 190 120 60 200 60 S280 80 300 60" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="20" stroke-linecap="round"/>
+        <path d="M40 190 C100 190 120 60 200 60 S280 80 300 60" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.5" stroke-dasharray="8 6" stroke-linecap="round"/>
+        <!-- Origin marker -->
+        <circle cx="40" cy="190" r="10" fill="#fff" opacity=".9"/>
+        <circle cx="40" cy="190" r="5" fill="#1a6fd4"/>
+        <!-- Destination marker -->
+        <circle cx="300" cy="60" r="10" fill="#fff" opacity=".9"/>
+        <circle cx="300" cy="60" r="5" fill="#3b9eff"/>
+        <!-- Truck (mid-route) -->
+        <g transform="translate(148,72) rotate(-30)">
+          <rect x="-18" y="-9" width="32" height="18" rx="4" fill="#ffffff" opacity=".95"/>
+          <rect x="14" y="-6" width="10" height="14" rx="2" fill="#ffffff" opacity=".8"/>
+          <circle cx="-10" cy="10" r="5" fill="#0f3a72"/>
+          <circle cx="10" cy="10" r="5" fill="#0f3a72"/>
+          <rect x="-12" y="-6" width="12" height="8" rx="1.5" fill="#3b9eff" opacity=".6"/>
+        </g>
+        <!-- City silhouette at destination -->
+        <rect x="280" y="30" width="6" height="30" rx="1" fill="rgba(255,255,255,.25)"/>
+        <rect x="290" y="22" width="8" height="38" rx="1" fill="rgba(255,255,255,.2)"/>
+        <rect x="302" y="35" width="5" height="25" rx="1" fill="rgba(255,255,255,.18)"/>
+        <!-- Warehouse at origin -->
+        <polygon points="20,180 60,180 60,165 40,155 20,165" fill="rgba(255,255,255,.2)"/>
+        <rect x="28" y="168" width="10" height="12" rx="1" fill="rgba(255,255,255,.35)"/>
+        <!-- Labels -->
+        <text x="40" y="210" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="9" font-family="Inter,sans-serif" font-weight="600" letter-spacing=".5">ORIGIN</text>
+        <text x="300" y="80" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="9" font-family="Inter,sans-serif" font-weight="600" letter-spacing=".5">DEST</text>
+        <!-- Scan ping animation at truck -->
+        <circle cx="155" cy="60" r="16" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5">
+          <animate attributeName="r" values="10;22;10" dur="2.4s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".6;0;.6" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Portals & How it works -->
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Portal experience</h2>
+        <p>Each audience has its own dedicated workspace and navigation.</p>
+      </div>
+      <div class="stack">
+        <a href="{{ url_for('auth.login') }}" class="inline-card" style="text-decoration:none;display:block">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong style="font-family:'IBM Plex Serif',Georgia,serif">Shipper portal</strong>
+              <p class="muted" style="margin:.25rem 0 0;font-size:.85rem">Shipment requests, quote comparison, bookings, payments, and analytics.</p>
+            </div>
+            <span style="color:var(--accent);font-size:1.1rem;flex-shrink:0">→</span>
+          </div>
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="inline-card" style="text-decoration:none;display:block">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong style="font-family:'IBM Plex Serif',Georgia,serif">Supplier portal</strong>
+              <p class="muted" style="margin:.25rem 0 0;font-size:.85rem">Fleet management, rate cards, compliance, and booking response.</p>
+            </div>
+            <span style="color:var(--accent);font-size:1.1rem;flex-shrink:0">→</span>
+          </div>
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="inline-card" style="text-decoration:none;display:block">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong style="font-family:'IBM Plex Serif',Georgia,serif">Admin portal</strong>
+              <p class="muted" style="margin:.25rem 0 0;font-size:.85rem">Approvals, booking interventions, platform settings, and reports.</p>
+            </div>
+            <span style="color:var(--accent);font-size:1.1rem;flex-shrink:0">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>How it works</h2>
+        <p>End-to-end logistics from entry to proof of delivery.</p>
+      </div>
+      <div class="stack">
+        {% set steps = [
+          ("Enter shipment details","Dimensions, weight, pallets, and collection and delivery addresses."),
+          ("System calculates","Volumetric weight, CBM, and chargeable weight — automatically."),
+          ("AI matches vehicles","Cargo matched to the right truck based on weight, volume, and loading requirements."),
+          ("Book the best option","Ranked quotes shown. One click confirms the booking and notifies the supplier."),
+          ("Track in real time","Scan-out, in-transit updates, and scan-in proof of delivery."),
+        ] %}
+        {% for i, (step, detail) in enumerate(steps) %}
+        <div style="display:flex;gap:.85rem;align-items:flex-start">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--accent-subtle);border:1.5px solid var(--accent-mid);color:var(--accent);font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem">{{ i+1 }}</div>
+          <div>
+            <strong style="font-size:.875rem">{{ step }}</strong>
+            <p class="muted" style="margin:.2rem 0 0;font-size:.82rem">{{ detail }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel" style="grid-column:1/-1">
+      <div class="panel-head">
+        <h2>Live platform activity</h2>
+        <p>Cross-platform notifications visible at a glance.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem">
+        {% for n in notifications %}
+        <article class="notification-card">
+          <div class="notification-head">
+            <strong style="font-size:.875rem">{{ n.title }}</strong>
+            <span class="pill">{{ n.audience }}</span>
+          </div>
+          <p style="margin:.35rem 0 .3rem;font-size:.85rem;color:var(--text-2)">{{ n.detail }}</p>
+          <p class="tiny-note">{{ n.channel }} · {{ n.time }}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .health-hero{background:linear-gradient(135deg,rgba(21,95,160,.13),rgba(39,174,96,.08));border:1px solid rgba(21,95,160,.2);border-radius:24px;padding:2rem;text-align:center}
+  .score-ring-wrap{position:relative;width:180px;height:180px;margin:0 auto 1.2rem}
+  .score-ring-wrap svg{transform:rotate(-90deg)}
+  .score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .score-number{font-size:3.2rem;font-weight:800;font-family:'IBM Plex Serif',serif;color:var(--accent-dark);line-height:1}
+  .score-denom{font-size:.95rem;color:var(--muted)}
+  .grade-chip{display:inline-block;padding:.35rem 1.1rem;border-radius:999px;font-weight:700;font-size:.9rem;margin-top:.5rem}
+  .grade-a{background:#d5f5e3;color:#1e8449}
+  .grade-b{background:#d6eaf8;color:#1a5276}
+  .grade-c{background:#fef9e7;color:#7d6608}
+  .component-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}
+  .component-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:1.2rem}
+  .component-bar-bg{background:var(--bg);border-radius:999px;height:10px;margin-top:.6rem}
+  .component-bar-fill{height:10px;border-radius:999px;transition:width .8s ease}
+  .insight-item{display:flex;gap:.9rem;align-items:flex-start;padding:.9rem 0;border-bottom:1px solid var(--line)}
+  .insight-item:last-child{border-bottom:none}
+  .insight-icon{font-size:1.4rem;margin-top:.1rem;flex-shrink:0}
+  .badge-good{color:#27ae60;font-weight:700}
+  .badge-warn{color:#e67e22;font-weight:700}
+  .badge-bad{color:#c0392b;font-weight:700}
+</style>
+{% endblock %}
+{% block content %}
+{% set grade = "A" if health_score >= 85 else ("B" if health_score >= 70 else "C") %}
+{% set grade_class = "grade-a" if health_score >= 85 else ("grade-b" if health_score >= 70 else "grade-c") %}
+{% set arc = (health_score / 100) * 502.65 %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Shipper portal · Intelligence</p>
+      <h1>Logistics Health Score</h1>
+      <p class="topbar-copy">A live composite score of your logistics operation's cost efficiency, reliability, and delivery performance.</p>
+    </div>
+    <div class="button-row">
+      <a href="{{ url_for('shipper.ai_insights') }}" class="primary-button">✦ AI Insights</a>
+      <a href="{{ url_for('shipper.opportunities') }}" class="ghost-button">💡 Opportunities</a>
+    </div>
+  </div>
+
+  <!-- Hero Score Ring -->
+  <div class="health-hero">
+    <div class="score-ring-wrap">
+      <svg viewBox="0 0 180 180" width="180" height="180">
+        <circle cx="90" cy="90" r="80" fill="none" stroke="var(--line)" stroke-width="14"/>
+        <circle cx="90" cy="90" r="80" fill="none" stroke="{% if health_score >= 85 %}#27ae60{% elif health_score >= 70 %}#2980b9{% else %}#e67e22{% endif %}"
+          stroke-width="14" stroke-dasharray="{{ arc }} 502.65" stroke-linecap="round"/>
+      </svg>
+      <div class="score-center">
+        <span class="score-number">{{ health_score }}</span>
+        <span class="score-denom">/ 100</span>
+        <span class="grade-chip {{ grade_class }}">Grade {{ grade }}</span>
+      </div>
+    </div>
+    <h2 style="margin:.4rem 0 .2rem">{% if health_score >= 85 %}Excellent logistics operation{% elif health_score >= 70 %}Good — room for improvement{% else %}Needs attention{% endif %}</h2>
+    <p style="color:var(--muted);max-width:520px;margin:0 auto">Your logistics operation is performing {% if health_score >= 85 %}above{% else %}near{% endif %} the FreightFlow platform average. {{ "Keep optimising your supplier mix and route consolidation." if health_score >= 85 else "Focus on supplier reliability and cost efficiency." }}</p>
+  </div>
+
+  <!-- Component Cards -->
+  <div>
+    <h2 style="margin-bottom:1rem">Score breakdown</h2>
+    <div class="component-grid">
+      <div class="component-card">
+        <p class="eyebrow">Cost Efficiency · 30% weight</p>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin:.4rem 0">
+          <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ cost_efficiency }}</strong>
+          <span class="badge-good">▲ Above avg</span>
+        </div>
+        <div class="component-bar-bg"><div class="component-bar-fill" style="width:{{ cost_efficiency }}%;background:#27ae60"></div></div>
+        <p class="small-note" style="margin-top:.5rem">Avg cost per km: R{{ avg_cost_per_km }} (platform avg R28.4)</p>
+      </div>
+      <div class="component-card">
+        <p class="eyebrow">Supplier Reliability · 30% weight</p>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin:.4rem 0">
+          <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ reliability }}</strong>
+          <span class="badge-good">▲ Good</span>
+        </div>
+        <div class="component-bar-bg"><div class="component-bar-fill" style="width:{{ reliability }}%;background:#2980b9"></div></div>
+        <p class="small-note" style="margin-top:.5rem">On-time delivery rate: {{ on_time_rate }}%</p>
+      </div>
+      <div class="component-card">
+        <p class="eyebrow">Delivery Performance · 25% weight</p>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin:.4rem 0">
+          <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ performance }}</strong>
+          <span class="badge-warn">→ Average</span>
+        </div>
+        <div class="component-bar-bg"><div class="component-bar-fill" style="width:{{ performance }}%;background:#e67e22"></div></div>
+        <p class="small-note" style="margin-top:.5rem">{{ delivered }} of {{ total_bookings }} bookings delivered on time</p>
+      </div>
+      <div class="component-card">
+        <p class="eyebrow">Booking Success Rate · 15% weight</p>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin:.4rem 0">
+          <strong style="font-size:1.8rem;color:var(--accent-dark)">{{ booking_success }}</strong>
+          <span class="badge-good">▲ Above avg</span>
+        </div>
+        <div class="component-bar-bg"><div class="component-bar-fill" style="width:{{ booking_success }}%;background:#8e44ad"></div></div>
+        <p class="small-note" style="margin-top:.5rem">{{ booking_success }}% of quotes converted to confirmed bookings</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly trend chart -->
+  <div class="stat-card" style="padding:1.5rem">
+    <h3 style="margin-bottom:1rem">Spend trend (6 months)</h3>
+    <canvas id="spendChart" height="80"></canvas>
+  </div>
+
+  <!-- AI Recommendations -->
+  <div class="stat-card" style="padding:1.5rem">
+    <h3 style="margin-bottom:1rem">✦ AI recommendations to improve your score</h3>
+    <div class="insight-item">
+      <span class="insight-icon">💡</span>
+      <div>
+        <strong>Negotiate a preferred supplier contract</strong>
+        <p class="small-note" style="margin:.2rem 0 0">A fixed-rate agreement with Kopano Linehaul on the Durban–JHB route could improve your Cost Efficiency score by 4–6 points.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <span class="insight-icon">🔄</span>
+      <div>
+        <strong>Consolidate partial loads on the Cape Town route</strong>
+        <p class="small-note" style="margin:.2rem 0 0">Combining 3 partial loads into 1–2 full loads reduces cost per kg by 22%, boosting Cost Efficiency by 3 points.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <span class="insight-icon">⭐</span>
+      <div>
+        <strong>Switch Polokwane supplier to improve reliability score</strong>
+        <p class="small-note" style="margin:.2rem 0 0">Blue Crane Logistics' on-time rate dropped to 82%. Highveld Haulage averages 94% on the same route at a similar price.</p>
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <a href="{{ url_for('shipper.opportunities') }}" class="primary-button">View all opportunities →</a>
+    </div>
+  </div>
+
+  <!-- Comparison vs platform -->
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+    <div class="stat-card">
+      <p class="stat-label">Your health score</p>
+      <strong style="color:var(--accent-dark)">{{ health_score }}</strong>
+      <p class="small-note">/ 100</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Platform avg</p>
+      <strong>74</strong>
+      <p class="small-note">/ 100</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Top 10% threshold</p>
+      <strong>91+</strong>
+      <p class="small-note">/ 100</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">Your ranking</p>
+      <strong style="color:#27ae60">Top 28%</strong>
+      <p class="small-note">of all shippers</p>
+    </div>
+  </div>
+</div>
+<script>
+const months = {{ spend | map(attribute='month') | list | tojson }};
+const totals = {{ spend | map(attribute='total') | list | tojson }};
+new Chart(document.getElementById('spendChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [{
+      label: 'Monthly spend (R)',
+      data: totals,
+      borderColor: '#155fa0',
+      backgroundColor: 'rgba(21,95,160,.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 5,
+      pointBackgroundColor: '#155fa0',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => 'R ' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+</script>
+{% endblock %}

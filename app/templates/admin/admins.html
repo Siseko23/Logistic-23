@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Super admin</p>
+      <h1>Admin accounts</h1>
+      <p class="topbar-copy">Manage admin users by department. Each department has access only to their relevant section. The super admin sees everything.</p>
+    </div>
+  </div>
+
+  <!-- Department access map -->
+  <section class="panel">
+    <div class="panel-head"><h2>Department access permissions</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem">
+      {% for dept in departments %}
+      <div style="border:1px solid var(--line);border-radius:18px;padding:1rem;background:rgba(255,255,255,.5)">
+        <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.6rem">
+          <span style="font-size:1.4rem">{{ dept.icon }}</span>
+          <strong>{{ dept.name }}</strong>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.3rem">
+          {% for perm in dept.permissions %}
+          <li style="font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:.4rem">
+            <span style="color:var(--green)">✓</span> {{ perm }}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Add admin account</h2><p>Only the super admin can create new admin users.</p></div>
+      {% if current_admin_role == 'superadmin' %}
+      <form method="POST" action="{{ '#' }}">
+        <div class="form-grid compact-two">
+          <label>Full name<input name="name" placeholder="Admin full name" required/></label>
+          <label>Email address<input name="email" type="email" placeholder="admin@movement.com" required/></label>
+          <label>Department
+            <select name="department" required>
+              <option value="">Select department…</option>
+              {% for dept in departments %}
+              <option value="{{ dept.id }}">{{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Temporary password<input name="password" type="password" placeholder="Temporary login password" required/></label>
+        </div>
+        <button type="submit" class="primary-button wide-button">Create admin account</button>
+      </form>
+      {% else %}
+      <div class="empty-card" style="padding:1.5rem;text-align:center">
+        <p class="muted">Only the super admin can create new admin accounts.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Active admin accounts</h2></div>
+      <div class="table-like">
+        {% for a in admins %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+          <div style="flex:1">
+            <strong>{{ a.name }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ a.email }}</p>
+          </div>
+          <div>
+            <span class="pill" style="{% if a.role=='superadmin' %}background:rgba(21,95,160,.18);color:var(--accent-dark){% endif %}">
+              {{ a.department }}
+            </span>
+          </div>
+          {% if current_admin_role == 'superadmin' and a.role != 'superadmin' %}
+          <form method="POST" action="{{ '#' }}" style="display:inline">
+            <button type="submit" class="ghost-button" style="padding:.35rem .8rem;font-size:.78rem;color:#c0392b">Deactivate</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

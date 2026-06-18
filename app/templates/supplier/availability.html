@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal-day{padding:.6rem .3rem;border-radius:10px;text-align:center;font-size:.82rem;min-height:48px;cursor:default;border:1px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem}
+  .cal-day.today{border-color:var(--accent);background:rgba(21,95,160,.08);font-weight:700;color:var(--accent-dark)}
+  .cal-day.blocked{background:rgba(192,57,43,.1);border-color:rgba(192,57,43,.3);color:#c0392b}
+  .cal-day.blocked.maintenance{background:rgba(230,162,0,.1);border-color:rgba(230,162,0,.3);color:#856500}
+  .cal-day.blocked.holiday{background:rgba(47,108,87,.1);border-color:rgba(47,108,87,.3);color:var(--green)}
+  .cal-day.past{opacity:.4}
+  .cal-day.empty{border:none;cursor:default}
+  .cal-header{font-weight:700;font-size:.78rem;text-align:center;color:var(--muted);padding:.4rem 0}
+  .block-card{border-radius:16px;border:1px solid var(--line);padding:.85rem 1rem;background:rgba(255,255,255,.5);display:flex;align-items:center;gap:.75rem}
+  .type-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .type-dot.maintenance{background:#e8a000}
+  .type-dot.holiday{background:var(--green)}
+  .type-dot.peak{background:#c0392b}
+</style>
+{% endblock %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Availability</p>
+      <h1>Availability calendar</h1>
+      <p class="topbar-copy">Block out dates when your fleet is unavailable — maintenance, public holidays, or peak pre-booked periods. This prevents booking offers being sent on those dates.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up" style="align-items:start">
+
+    <!-- Calendar view -->
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2 style="margin:0;font-family:'IBM Plex Serif',serif" id="cal-month-label">June 2026</h2>
+        <div class="button-row">
+          <button class="ghost-button" style="padding:.4rem .8rem" onclick="changeMonth(-1)">‹</button>
+          <button class="ghost-button" style="padding:.4rem .8rem" onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+
+      <!-- Day labels -->
+      <div class="cal-grid" style="margin-bottom:.4rem">
+        {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+        <div class="cal-header">{{ d }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Calendar cells rendered by JS -->
+      <div class="cal-grid" id="cal-cells"></div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;font-size:.8rem">
+        <div style="display:flex;align-items:center;gap:.4rem"><div class="type-dot maintenance"></div> Maintenance</div>
+        <div style="display:flex;align-items:center;gap:.4rem"><div class="type-dot holiday"></div> Public holiday</div>
+        <div style="display:flex;align-items:center;gap:.4rem"><div class="type-dot peak"></div> Peak/pre-booked</div>
+        <div style="display:flex;align-items:center;gap:.4rem;border:1px solid var(--accent);border-radius:6px;padding:.1rem .4rem;color:var(--accent)">Today</div>
+      </div>
+    </section>
+
+    <!-- Block management -->
+    <div class="stack">
+
+      <!-- Existing blocks -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Blocked dates</h2>
+          <p>{{ blocked_dates|length }} date{{ 's' if blocked_dates|length != 1 }} blocked</p>
+        </div>
+        {% for b in blocked_dates | sort(attribute='date') %}
+        <div class="block-card" style="margin-bottom:.6rem">
+          <div class="type-dot {{ b.type }}"></div>
+          <div style="flex:1">
+            <strong style="font-size:.9rem">{{ b.date }}</strong>
+            <p class="muted" style="margin:.15rem 0 0;font-size:.82rem">{{ b.reason }}</p>
+            <span class="pill" style="font-size:.7rem;margin-top:.3rem;display:inline-block">{{ b.type | capitalize }}</span>
+          </div>
+          <form action="{{ '#' }}" method="POST" onsubmit="return confirm('Remove this block?')">
+            <button type="submit" class="ghost-button" style="padding:.35rem .7rem;font-size:.8rem;color:#c0392b;border-color:rgba(192,57,43,.3)">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <div class="empty-card" style="padding:1.5rem;text-align:center">
+          <p class="muted">No blocked dates. Your fleet is shown as available for all future dates.</p>
+        </div>
+        {% endfor %}
+      </section>
+
+      <!-- Add block form -->
+      <section class="panel" style="background:rgba(21,95,160,.03);border:1px dashed rgba(21,95,160,.25)">
+        <div class="panel-head"><h2>Block a date</h2></div>
+        <form action="{{ '#' }}" method="POST">
+          <div class="form-grid">
+            <label class="form-span">
+              Date
+              <input type="date" name="date" id="block-date" required min="{{ today }}">
+            </label>
+            <label class="form-span">
+              Reason
+              <input type="text" name="reason" placeholder="e.g. Fleet maintenance day" required>
+            </label>
+            <label class="form-span">
+              Type
+              <select name="type">
+                <option value="maintenance">🔧 Maintenance</option>
+                <option value="holiday">🏖 Public holiday</option>
+                <option value="peak">📦 Peak / pre-booked</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="primary-button wide-button" style="margin-top:.8rem">+ Block date</button>
+        </form>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Impact notice -->
+  <section class="panel" style="background:rgba(192,57,43,.04);border:1px solid rgba(192,57,43,.15)">
+    <div style="display:flex;gap:.8rem;align-items:flex-start">
+      <span style="font-size:1.5rem">⚠️</span>
+      <div>
+        <strong>How this affects your booking offers</strong>
+        <p class="muted" style="margin:.3rem 0 0;font-size:.88rem">When a date is blocked, the AI matching engine will skip your company when assigning bookings for that collection date. This protects your acceptance rate — you won't receive offers you'd have to reject. Blocks apply to collection dates, not delivery dates.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const blockedDates = {{ blocked_dates | map(attribute='date') | list | tojson }};
+const blockedTypes = {};
+{% for b in blocked_dates %}blockedTypes['{{ b.date }}'] = '{{ b.type }}';{% endfor %}
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let viewYear = 2026, viewMonth = 5; // 0-indexed month
+
+function changeMonth(dir){
+  viewMonth += dir;
+  if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+  if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+  renderCal();
+}
+
+function renderCal(){
+  const label = document.getElementById('cal-month-label');
+  label.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+
+  const cells = document.getElementById('cal-cells');
+  cells.innerHTML = '';
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  // Monday-based offset
+  let startOffset = firstDay.getDay() - 1;
+  if(startOffset < 0) startOffset = 6;
+
+  // Empty cells
+  for(let i=0;i<startOffset;i++){
+    cells.insertAdjacentHTML('beforeend','<div class="cal-day empty"></div>');
+  }
+
+  for(let d=1;d<=daysInMonth;d++){
+    const dt = new Date(viewYear, viewMonth, d);
+    const iso = dt.toISOString().split('T')[0];
+    let cls = 'cal-day';
+    if(dt.getTime() === today.getTime()) cls += ' today';
+    if(dt < today) cls += ' past';
+    if(blockedDates.includes(iso)){
+      const t = blockedTypes[iso] || 'maintenance';
+      cls += ' blocked ' + t;
+    }
+    cells.insertAdjacentHTML('beforeend',
+      `<div class="${cls}" title="${blockedDates.includes(iso) ? blockedTypes[iso] : ''}" onclick="selectDay('${iso}')">${d}</div>`
+    );
+  }
+}
+
+function selectDay(iso){
+  const input = document.getElementById('block-date');
+  if(input) input.value = iso;
+}
+
+// Set min date for input
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const inp = document.getElementById('block-date');
+  if(inp) inp.min = today;
+  renderCal();
+});
+</script>
+{% endblock %}

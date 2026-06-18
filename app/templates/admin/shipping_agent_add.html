@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · <a href="{{ '#' }}" style="color:var(--accent);text-decoration:none">Shipping agents</a> · Add new</p>
+      <h1>Register shipping agent</h1>
+      <p class="topbar-copy">Add a new shipping agent company to the platform. They will start as "Pending approval" until you activate them.</p>
+    </div>
+  </div>
+
+  <div style="max-width:640px">
+    <form method="POST" action="{{ '#' }}">
+      <section class="panel">
+        <div class="panel-head"><h2>Company information</h2></div>
+        <div class="stack" style="gap:.9rem">
+          <div>
+            <label class="field-label">Company name *</label>
+            <input type="text" name="company" required placeholder="e.g. Cape Sea Freight (Pty) Ltd"
+              style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label class="field-label">Contact person *</label>
+              <input type="text" name="contactName" required placeholder="Full name"
+                style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+            </div>
+            <div>
+              <label class="field-label">City *</label>
+              <select name="city" required style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+                <option value="">Select city</option>
+                <option>Cape Town</option>
+                <option>Durban</option>
+                <option>Johannesburg</option>
+                <option>Gqeberha</option>
+                <option>East London</option>
+                <option>Richards Bay</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+            <div>
+              <label class="field-label">Email address *</label>
+              <input type="email" name="email" required placeholder="contact@company.co.za"
+                style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+            </div>
+            <div>
+              <label class="field-label">Phone number *</label>
+              <input type="text" name="phone" required placeholder="+27 xx xxx xxxx"
+                style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+            </div>
+          </div>
+          <div>
+            <label class="field-label">VAT number (optional)</label>
+            <input type="text" name="vatNo" placeholder="e.g. 4820193745"
+              style="width:100%;padding:.65rem .9rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);font-size:.9rem">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:1rem">
+        <div class="panel-head"><h2>Services offered</h2><p>Select all that apply</p></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem">
+          {% for svc in ['FCL','LCL','Groupage','Airfreight','Courier','Break Bulk','Road Freight','Rail Freight'] %}
+          <label style="display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:.88rem">
+            <input type="checkbox" name="services" value="{{ svc }}" style="accent-color:var(--accent);width:1rem;height:1rem">
+            {{ svc }}
+          </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div style="display:flex;gap:.7rem;justify-content:flex-end;margin-top:1rem">
+        <a href="{{ '#' }}" class="primary-button" style="text-decoration:none;background:transparent;color:var(--muted);border:1px solid var(--line)">Cancel</a>
+        <button type="submit" class="primary-button">Register agent →</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

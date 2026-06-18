@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Supplier portal</p><h1>Rate cards &amp; versioning</h1><p class="topbar-copy">Per route, vehicle type, load type, surcharge, and minimum charge. All versions are retained for audit and dispute resolution.</p></div></div>
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Add rate card</h2></div>
+      <form method="POST">
+        <div class="form-grid compact-two">
+          <label>Route
+            <input name="route" placeholder="e.g. Durban → Johannesburg" list="sa-rate-routes"/>
+            <datalist id="sa-rate-routes">
+              {% for r in ['Durban → Johannesburg','Johannesburg → Cape Town','Cape Town → Gqeberha','Johannesburg → Polokwane','Durban → Bloemfontein','Durban → Cape Town','Johannesburg → Durban'] %}
+              <option value="{{ r }}">{% endfor %}
+            </datalist>
+          </label>
+          <label>Vehicle type<input name="vehicleType" placeholder="e.g. Superlink"/></label>
+          <label>Base rate (ZAR)<input name="baseRate" type="number" placeholder="0.00"/></label>
+          <label>Fuel surcharge %<input name="fuelSurcharge" type="number" step="0.1" placeholder="0"/></label>
+          <label>Minimum charge (ZAR)<input name="minimumCharge" type="number" placeholder="0.00"/></label>
+          <label>Load type<input name="loadType" placeholder="e.g. General freight"/></label>
+        </div>
+        <button type="submit" class="primary-button wide-button">Save rate card version</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Active rate cards</h2></div>
+      <div class="stack">
+        {% for r in rate_cards %}
+        <article class="inline-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+            <strong>{{ r.route }}</strong>
+            <span class="pill">{{ r.version }}</span>
+          </div>
+          <p style="margin:0;font-size:.9rem">{{ r.vehicleType }} | {{ r.loadType }}</p>
+          <div style="display:flex;gap:1.5rem;margin-top:.5rem;font-size:.88rem;color:var(--muted)">
+            <span>Base: {{ zar(r.baseRate) }}</span>
+            <span>Min: {{ zar(r.minimumCharge) }}</span>
+            <span>Fuel: {{ r.fuelSurcharge }}%</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

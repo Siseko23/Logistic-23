@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Supplier portal · Purchase orders</p>
+      <h1>Purchase orders</h1>
+      <p class="topbar-copy">A purchase order is issued automatically when you accept a booking. Use it to formulate your tax invoice and upload it here to claim your payment.</p>
+    </div>
+    {% if pending > 0 %}
+    <div style="align-self:flex-start;margin-top:.5rem">
+      <span style="padding:.5rem 1.1rem;border-radius:999px;background:rgba(155,28,28,.12);color:#9b1c1c;font-size:.85rem;font-weight:600">
+        ⏳ {{ pending }} invoice{{ 's' if pending > 1 }} outstanding
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="toggle-row">
+    <button class="nav-chip active" onclick="filterPO('all',this)">All ({{ pos|length }})</button>
+    <button class="nav-chip" onclick="filterPO('Invoice Pending',this)">Invoice pending</button>
+    <button class="nav-chip" onclick="filterPO('Invoice Received',this)">Invoice submitted</button>
+    <button class="nav-chip" onclick="filterPO('Paid',this)">Paid</button>
+  </div>
+
+  <section class="panel">
+    <div class="table-like" id="po-list">
+      {% for po in pos | sort(attribute='issuedAt', reverse=True) %}
+      <a href="{{ '#' }}"
+         class="table-row po-item"
+         data-status="{{ po.status }}"
+         style="text-decoration:none;color:inherit;flex-wrap:wrap;gap:.8rem;
+           {% if po.status=='Invoice Pending' %}background:rgba(155,28,28,.04);border-left:3px solid #c0392b{% endif %}">
+
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;width:2.6rem;height:2.6rem;border-radius:12px;
+          background:{% if po.status=='Invoice Pending' %}rgba(155,28,28,.1){% elif po.status=='Invoice Received' %}rgba(47,108,87,.1){% else %}rgba(47,108,87,.15){% endif %}">
+          {% if po.status == 'Invoice Pending' %}📋
+          {% elif po.status == 'Invoice Received' %}📤
+          {% else %}✅{% endif %}
+        </div>
+
+        <div style="flex:1;min-width:200px">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <strong>{{ po.id }}</strong>
+            <span class="muted" style="font-size:.8rem">Booking {{ po.ref }}</span>
+            {% if po.status == 'Invoice Pending' %}
+            <span style="font-size:.7rem;background:rgba(155,28,28,.12);color:#9b1c1c;padding:.15rem .5rem;border-radius:999px;font-weight:700">INVOICE DUE</span>
+            {% endif %}
+          </div>
+          <p style="margin:.25rem 0 0;font-size:.88rem">{{ po.route }}</p>
+          <p class="muted" style="font-size:.8rem;margin:.15rem 0 0">{{ po.shipper }} &middot; {{ po.commodity }} &middot; {{ po.pieces }} {{ po.unitType }}</p>
+        </div>
+
+        <div style="text-align:right;min-width:150px;flex-shrink:0">
+          <p style="margin:0;font-size:.82rem;color:var(--muted)">Agreed rate</p>
+          <p style="margin:.1rem 0 0;font-weight:700;font-size:1rem;color:var(--accent-dark)">R {{ "{:,.0f}".format(po.agreedRate) }}</p>
+          <p class="muted" style="font-size:.76rem;margin:.3rem 0 0">Issued {{ po.issuedAt }}</p>
+        </div>
+
+        <div style="flex-shrink:0;display:flex;align-items:center">
+          <span class="pill {% if po.status=='Paid' or po.status=='Invoice Received' %}badge{% endif %}"
+            style="{% if po.status=='Invoice Pending' %}background:rgba(155,28,28,.1);color:#9b1c1c{% endif %}">
+            {{ po.status }}
+          </span>
+        </div>
+      </a>
+      {% else %}
+      <div class="empty-card" style="padding:2.5rem;text-align:center">
+        <p style="font-size:2rem;margin:0">📋</p>
+        <p class="muted" style="margin:.6rem 0 0">No purchase orders yet. POs are issued automatically when you accept a booking.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="panel" style="background:rgba(47,108,87,.04);border:1px solid rgba(47,108,87,.18)">
+    <div class="panel-head"><h2>How to claim your payment</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;padding-top:.4rem">
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.5rem;flex-shrink:0">📋</span>
+        <div><strong style="font-size:.9rem">1. PO is issued</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">The moment you accept a booking, a purchase order is created and available here. It contains all trip details, agreed rate, and our bank details.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.5rem;flex-shrink:0">🧾</span>
+        <div><strong style="font-size:.9rem">2. Formulate your invoice</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Use the PO details to create a tax invoice from your company. Include your VAT number, PO number, booking reference, and banking details.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.5rem;flex-shrink:0">📤</span>
+        <div><strong style="font-size:.9rem">3. Upload your invoice</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Upload your invoice as a PDF directly against the PO on this page. It goes straight to the FreightFlow finance team for processing.</p></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.5rem;flex-shrink:0">💸</span>
+        <div><strong style="font-size:.9rem">4. Get paid</strong><p class="muted" style="font-size:.82rem;margin:.3rem 0 0">Once your invoice is verified, payment is processed to your registered bank account. Payment terms are stated on each PO.</p></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterPO(val, btn) {
+  document.querySelectorAll('.nav-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.po-item').forEach(r => {
+    r.style.display = (val === 'all' || r.dataset.status === val) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

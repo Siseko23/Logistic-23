@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Admin portal</p><h1>Bookings &amp; interventions</h1><p class="topbar-copy">View all bookings, advance status, reassign suppliers, and resolve manual review cases.</p></div></div>
+  <section class="panel">
+    <div class="panel-head"><h2>All bookings</h2></div>
+    <div class="toggle-row">
+      {% for s in ['All','Pending Supplier Acceptance','Confirmed','In Transit','Delivered','Manual Review'] %}
+      <button class="nav-chip {% if loop.first %}active{% endif %}" onclick="filterBookings('{{ s }}',this)">{{ s }}</button>
+      {% endfor %}
+    </div>
+    <div class="table-like" id="booking-table">
+      {% for b in bookings %}
+      <div class="action-row-card" data-status="{{ b.status }}">
+        <div>
+          <strong>{{ b.ref }}</strong>
+          <p class="muted" style="margin:.2rem 0 0">{{ b.route }}</p>
+          <p class="tiny-note">{{ b.shipper }} | {{ b.supplier }}</p>
+        </div>
+        <div>
+          <p>{{ zar(b.value) }}</p>
+          <span class="pill">{{ b.status }}</span>
+        </div>
+        <div class="button-row">
+          <button class="ghost-button" style="font-size:.85rem;padding:.55rem .9rem" onclick="alert('Supplier reassigned.')">Reassign</button>
+          <button class="primary-button" style="font-size:.85rem;padding:.55rem .9rem" onclick="alert('Status advanced.')">Advance</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+function filterBookings(status,btn){
+  document.querySelectorAll('.nav-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#booking-table .action-row-card').forEach(r=>{
+    r.style.display=(status==='All'||r.dataset.status===status)?'flex':'none';
+  });
+}
+</script>{% endblock %}

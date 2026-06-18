@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar"><div><p class="eyebrow">Shipper portal</p><h1>Choose payment method</h1><p class="topbar-copy">Select how you'd like to pay for booking {{ booking.ref }}. Payment is processed securely before dispatch.</p></div></div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Payment methods</h2></div>
+      <form method="POST" action="{{ '#' }}">
+        <div class="stack" style="gap:.7rem;margin-bottom:1rem">
+
+          <label style="cursor:pointer">
+            <div class="payment-card {% if booking.paymentMethod=='Instant EFT' %}active{% endif %}" id="card-eft" onclick="selectPayment(this,'Instant EFT')">
+              <div style="font-size:1.4rem">⚡</div>
+              <div>
+                <strong>Instant EFT</strong>
+                <p class="muted" style="font-size:.85rem;margin:.2rem 0 0">Pay directly from your bank account via Ozow. Instant confirmation.</p>
+              </div>
+            </div>
+          </label>
+
+          <label style="cursor:pointer">
+            <div class="payment-card {% if booking.paymentMethod=='Debit / Credit Card' %}active{% endif %}" id="card-cc" onclick="selectPayment(this,'Debit / Credit Card')">
+              <div style="font-size:1.4rem">💳</div>
+              <div>
+                <strong>Debit / Credit card</strong>
+                <p class="muted" style="font-size:.85rem;margin:.2rem 0 0">Visa, Mastercard, or Amex. Processed via PayFast.</p>
+              </div>
+            </div>
+          </label>
+
+          <label style="cursor:pointer">
+            <div class="payment-card {% if booking.paymentMethod=='30-Day Invoice' %}active{% endif %}" id="card-inv" onclick="selectPayment(this,'30-Day Invoice')">
+              <div style="font-size:1.4rem">📄</div>
+              <div>
+                <strong>30-day invoice</strong>
+                <p class="muted" style="font-size:.85rem;margin:.2rem 0 0">Available for verified business accounts only. Net-30 terms.</p>
+                {% if not verified_account %}<span style="font-size:.75rem;color:#c0392b">⚠ Account not yet verified for invoice terms</span>{% endif %}
+              </div>
+            </div>
+          </label>
+
+        </div>
+        <input type="hidden" name="paymentMethod" id="pm-input" value="{{ booking.paymentMethod or '' }}" required/>
+        <button type="submit" class="primary-button wide-button" id="pay-btn" disabled>Confirm payment method</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Order summary</h2></div>
+      <div class="stack" style="gap:.6rem">
+        <div class="summary-row"><span>Booking reference</span><strong>{{ booking.ref }}</strong></div>
+        <div class="summary-row"><span>Route</span><strong>{{ booking.route }}</strong></div>
+        <div class="summary-row"><span>Supplier</span><strong>{{ booking.supplier }}</strong></div>
+        <div class="summary-row"><span>Cargo</span><strong>{{ booking.pieces }} {{ booking.unitType }} · {{ booking.commodity }}</strong></div>
+        <div class="summary-row"><span>Freight rate</span><strong>{{ zar(supplier_total) }}</strong></div>
+        <div class="summary-row"><span>Platform fee ({{ platform_fee_pct }}%)</span><strong>{{ zar(platform_fee) }}</strong></div>
+        <div class="summary-row" style="border-top:2px solid var(--line);padding-top:.8rem;margin-top:.2rem">
+          <span style="font-weight:600">Total payable</span>
+          <strong style="font-size:1.3rem;color:var(--accent)">{{ zar(booking.value) }}</strong>
+        </div>
+      </div>
+
+      <div style="margin-top:1.2rem;background:rgba(21,95,160,.06);border-radius:14px;padding:.9rem">
+        <p style="margin:0;font-size:.85rem;color:var(--muted)">🔒 All payments are encrypted and processed securely. FreightFlow Nexus does not store card details.</p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function selectPayment(card, method) {
+  document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  document.getElementById('pm-input').value = method;
+  document.getElementById('pay-btn').disabled = false;
+}
+// restore state on load
+const saved = document.getElementById('pm-input').value;
+if (saved) {
+  document.getElementById('pay-btn').disabled = false;
+}
+</script>
+{% endblock %}

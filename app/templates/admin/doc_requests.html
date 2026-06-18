@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack page-space">
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">Admin · Compliance</p>
+      <h1>Document requests</h1>
+      <p class="topbar-copy">Request updated or expired documents from suppliers. Set a deadline — suppliers are temporarily suspended if they don't comply in time.</p>
+    </div>
+  </div>
+
+  <div class="grid two-up">
+    <section class="panel">
+      <div class="panel-head"><h2>Send document request</h2>
+        <p>The supplier receives an email and in-portal notification. If the deadline passes without upload, their account is automatically suspended pending the document.</p>
+      </div>
+      <form method="POST" action="{{ '#' }}">
+        <div class="form-grid compact-two">
+          <label>Supplier
+            <select name="supplierId" required>
+              <option value="">Select supplier…</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Document required
+            <select name="docType" required>
+              <option value="">Select document…</option>
+              <option>Insurance certificate</option>
+              <option>Roadworthy certificate</option>
+              <option>Operator permit</option>
+              <option>Tax clearance certificate</option>
+              <option>CIPC registration</option>
+              <option>Vehicle insurance certificate</option>
+              <option>Vehicle roadworthy certificate</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>Deadline date
+            <input type="date" name="deadline" required
+              min="{{ today }}"
+              value="{{ default_deadline }}"/>
+          </label>
+          <label>Action if overdue
+            <select name="overdueAction">
+              <option value="suspend">Temporarily suspend supplier</option>
+              <option value="warn">Send warning only</option>
+            </select>
+          </label>
+          <label class="form-span">Reason / message to supplier
+            <textarea name="reason" rows="3" placeholder="e.g. Your insurance certificate expired on 01 May 2026. Please upload the renewed certificate before the deadline or your account will be temporarily suspended." required></textarea>
+          </label>
+        </div>
+        <div style="background:rgba(255,200,0,.1);border:1px solid rgba(200,160,0,.25);border-radius:14px;padding:.8rem;margin:.6rem 0">
+          <p style="margin:0;font-size:.85rem">⚠️ If <strong>Temporarily suspend</strong> is selected and the deadline passes, the supplier's status changes to <strong>Suspended — Awaiting docs</strong> automatically. Active bookings are not cancelled — only new bookings are blocked.</p>
+        </div>
+        <button type="submit" class="primary-button wide-button">Send document request</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Outstanding requests</h2></div>
+      <div class="table-like">
+        {% for req in doc_requests %}
+        <div class="table-row" style="flex-wrap:wrap;gap:.6rem">
+          <div style="flex:1;min-width:140px">
+            <strong>{{ req.supplier }}</strong>
+            <p class="muted" style="font-size:.82rem;margin:.2rem 0 0">{{ req.docType }}</p>
+          </div>
+          <div>
+            <p style="font-size:.85rem;margin:0">Deadline: <strong style="color:{% if req.overdue %}#c0392b{% else %}var(--text){% endif %}">{{ req.deadline }}</strong></p>
+            <p style="font-size:.75rem;color:var(--muted);margin:.2rem 0 0">Sent: {{ req.sentAt }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">
+            <span class="pill {% if req.status=='Uploaded' %}badge{% elif req.status=='Overdue' %}{% endif %}"
+              style="{% if req.status=='Overdue' %}background:rgba(155,28,28,.12);color:#9b1c1c{% endif %}">
+              {{ req.status }}
+            </span>
+            {% if req.status == 'Overdue' and req.overdueAction == 'suspend' %}
+            <span style="font-size:.72rem;color:#c0392b">Auto-suspended</span>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-card" style="padding:1.5rem;text-align:center">
+          <p class="muted">No outstanding document requests.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
