@@ -1,12 +1,3 @@
-"""
-FreightFlow Nexus — Entry Point
-
-Commands:
-  Run dev server:    python run.py
-  Seed database:     python seeds/seed.py
-  Run Celery worker: celery -A run.celery worker --loglevel=info
-  Run Celery beat:   celery -A run.celery beat --loglevel=info
-"""
 import os
 from app import create_app
 from app.models import db
